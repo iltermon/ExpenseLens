@@ -107,7 +107,7 @@ fun AppNavigation(
                     )
                 }
                 composable(Routes.SETTINGS) {
-                    SettingsScreen()
+                    SettingsScreen(viewModel = viewModel)
                 }
                 composable(Routes.ADD_EXPENSE) {
                     AddExpenseScreen(

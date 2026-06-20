@@ -35,4 +35,24 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
 
     suspend fun updateTemplate(template: RecurringTemplate) =
         db.recurringTemplateDao().update(template)
+
+    // Accounts
+    fun getAllAccounts(): Flow<List<Account>> =
+        db.accountDao().getAllAccounts()
+
+    suspend fun insertAccount(account: Account) =
+        db.accountDao().insert(account)
+
+    suspend fun deleteAccount(account: Account) =
+        db.accountDao().delete(account)
+
+    // Categories
+    fun getAllCategories(): Flow<List<Category>> =
+        db.categoryDao().getAllCategories()
+
+    suspend fun insertCategory(category: Category) =
+        db.categoryDao().insert(category)
+
+    suspend fun deleteCategory(category: Category) =
+        db.categoryDao().delete(category)
 }

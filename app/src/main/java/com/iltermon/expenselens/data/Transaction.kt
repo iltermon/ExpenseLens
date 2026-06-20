@@ -12,5 +12,6 @@ data class Transaction(
     val category: String,
     val date: String,
     val isExpense: Boolean,
-    val isPaid: Boolean = false  // manually added transactions are not paid by default
+    val isPaid: Boolean = false,
+    val accountId: Int? = null
 )

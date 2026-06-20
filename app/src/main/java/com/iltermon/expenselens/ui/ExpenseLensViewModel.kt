@@ -3,6 +3,8 @@ package com.iltermon.expenselens.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.iltermon.expenselens.data.Account
+import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
@@ -45,13 +47,27 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             val date = LocalDate.parse(transaction.date)
             date >= range.start && date <= range.end
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val accounts: StateFlow<List<Account>> = repository.getAllAccounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val allCategories: StateFlow<List<Category>> = repository.getAllCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val expenseCategories: StateFlow<List<Category>> = repository.getAllCategories()
+        .map { list -> list.filter { it.type == null || it.type == "expense" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val incomeCategories: StateFlow<List<Category>> = repository.getAllCategories()
+        .map { list -> list.filter { it.type == null || it.type == "income" } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     val activeRecurring: StateFlow<List<RecurringTemplate>> = _selectedMonth
         .flatMapLatest { month ->
             repository.getActiveTemplatesForMonth(month.toString())
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     val expenseItems: StateFlow<List<ExpenseItem>> = combine(
         filteredTransactions,
@@ -94,7 +110,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             }
 
         (transactionItems + recurringItems).sortedBy { it.date }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     fun goToPreviousMonth() {
         val newMonth = _selectedMonth.value.minusMonths(1)
@@ -132,6 +148,23 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     fun deleteTemplate(template: RecurringTemplate) {
         viewModelScope.launch { repository.deleteTemplate(template) }
     }
+
+    fun insertAccount(account: Account) {
+        viewModelScope.launch { repository.insertAccount(account) }
+    }
+
+    fun deleteAccount(account: Account) {
+        viewModelScope.launch { repository.deleteAccount(account) }
+    }
+
+    fun insertCategory(category: Category) {
+        viewModelScope.launch { repository.insertCategory(category) }
+    }
+
+    fun deleteCategory(category: Category) {
+        viewModelScope.launch { repository.deleteCategory(category) }
+    }
+
     fun togglePaid(item: ExpenseItem) {
         viewModelScope.launch {
             if (item.isRecurring && !item.isPaid) {
@@ -157,6 +190,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
     companion object {
+        private const val SUBSCRIBE_TIMEOUT_MS = 5000L
+
         fun factory(repository: ExpenseLensRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
