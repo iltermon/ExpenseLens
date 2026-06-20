@@ -8,6 +8,7 @@ import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -21,12 +22,45 @@ data class ExpenseItem(
     val date: String,
     val isExpense: Boolean,
     val isPaid: Boolean,
-    val isRecurring: Boolean,       // true = came from a recurring template
-    val transactionId: Int? = null  // null if not yet converted to a transaction
+    val isRecurring: Boolean,
+    val transactionId: Int? = null,
+    val frequencyLabel: String? = null  // non-null only for recurring items
 )
 data class DateRange(val start: LocalDate, val end: LocalDate)
 
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
+
+    init {
+        val currentMonth = YearMonth.now()
+        viewModelScope.launch {
+            repository.getActiveTemplatesForMonth(currentMonth.toString())
+                .combine(repository.getAllTransactions()) { templates, transactions ->
+                    templates to transactions
+                }
+                .collect { (templates, transactions) ->
+                    templates
+                        .filter { it.autoPayment }
+                        .filter { template ->
+                            transactions.none { t ->
+                                t.description == template.description &&
+                                t.date.startsWith(currentMonth.toString())
+                            }
+                        }
+                        .forEach { template ->
+                            repository.insertTransaction(
+                                Transaction(
+                                    description = template.description,
+                                    amount = template.amount,
+                                    category = template.category,
+                                    date = LocalDate.now().toString(),
+                                    isExpense = template.isExpense,
+                                    isPaid = true
+                                )
+                            )
+                        }
+                }
+        }
+    }
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
     val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
@@ -37,7 +71,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             end = YearMonth.now().atEndOfMonth()
         )
     )
-    val dateRange: StateFlow<DateRange> = _dateRange.asStateFlow()
 
     val filteredTransactions: StateFlow<List<Transaction>> = combine(
         repository.getAllTransactions(),
@@ -63,6 +96,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         .map { list -> list.filter { it.type == null || it.type == "income" } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val activeRecurring: StateFlow<List<RecurringTemplate>> = _selectedMonth
         .flatMapLatest { month ->
             repository.getActiveTemplatesForMonth(month.toString())
@@ -96,6 +130,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 }
             }
             .map { template ->
+                val interval = template.frequencyInterval
+                val unit = template.frequencyUnit
                 ExpenseItem(
                     id = template.id,
                     description = template.description,
@@ -105,7 +141,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                     isExpense = template.isExpense,
                     isPaid = false,
                     isRecurring = true,
-                    transactionId = null
+                    transactionId = null,
+                    frequencyLabel = if (interval == 1) unit else "Every $interval ${unit}s"
                 )
             }
 
@@ -124,11 +161,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         _dateRange.value = DateRange(newMonth.atDay(1), newMonth.atEndOfMonth())
     }
 
-    fun selectMonth(month: YearMonth) {
-        _selectedMonth.value = month
-        _dateRange.value = DateRange(month.atDay(1), month.atEndOfMonth())
-    }
-
     fun selectDateRange(start: LocalDate, end: LocalDate) {
         _dateRange.value = DateRange(start, end)
     }
@@ -137,16 +169,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.insertTransaction(transaction) }
     }
 
-    fun deleteTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.deleteTransaction(transaction) }
-    }
-
     fun insertTemplate(template: RecurringTemplate) {
         viewModelScope.launch { repository.insertTemplate(template) }
-    }
-
-    fun deleteTemplate(template: RecurringTemplate) {
-        viewModelScope.launch { repository.deleteTemplate(template) }
     }
 
     fun insertAccount(account: Account) {
@@ -174,7 +198,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         description = item.description,
                         amount = item.amount,
                         category = item.category,
-                        date = java.time.LocalDate.now().toString(),
+                        date = LocalDate.now().toString(),
                         isExpense = item.isExpense,
                         isPaid = true
                     )

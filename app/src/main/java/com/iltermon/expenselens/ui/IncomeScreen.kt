@@ -25,8 +25,9 @@ fun IncomeScreen(
     val expenseItems by viewModel.expenseItems.collectAsState()
 
     val items = expenseItems.filter { !it.isExpense }
+    val recurringItems = items.filter { it.isRecurring && !it.isPaid }
+    val pendingItems = items.filter { !it.isRecurring && !it.isPaid }
     val receivedItems = items.filter { it.isPaid }
-    val pendingItems = items.filter { !it.isPaid }
 
     TabScreenShell(
         title = "Income",
@@ -35,16 +36,16 @@ fun IncomeScreen(
         leftLabel = "This Month Income",
         leftAmount = items.sumOf { it.amount },
         rightLabel = "Pending Income",
-        rightAmount = pendingItems.sumOf { it.amount },
+        rightAmount = (recurringItems + pendingItems).sumOf { it.amount },
         rightIsNegative = false
     ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (receivedItems.isNotEmpty()) {
-                item { SectionHeader(title = "Received", total = receivedItems.sumOf { it.amount }) }
-                items(receivedItems) { item ->
+            if (recurringItems.isNotEmpty()) {
+                item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
+                items(recurringItems) { item ->
                     ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
                 }
             }
@@ -55,6 +56,16 @@ fun IncomeScreen(
                     SectionHeader(title = "Pending", total = pendingItems.sumOf { it.amount })
                 }
                 items(pendingItems) { item ->
+                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                }
+            }
+
+            if (receivedItems.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    SectionHeader(title = "Received", total = receivedItems.sumOf { it.amount })
+                }
+                items(receivedItems) { item ->
                     ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
                 }
             }

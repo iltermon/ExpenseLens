@@ -37,8 +37,9 @@ fun ExpensesScreen(
     val expenseItems by viewModel.expenseItems.collectAsState()
 
     val items = expenseItems.filter { it.isExpense }
+    val recurringItems = items.filter { it.isRecurring && !it.isPaid }
+    val unpaidItems = items.filter { !it.isRecurring && !it.isPaid }
     val paidItems = items.filter { it.isPaid }
-    val unpaidItems = items.filter { !it.isPaid }
 
     TabScreenShell(
         title = "Expenses",
@@ -47,16 +48,16 @@ fun ExpensesScreen(
         leftLabel = "This Month Expenses",
         leftAmount = items.sumOf { it.amount },
         rightLabel = "Remaining Payment",
-        rightAmount = unpaidItems.sumOf { it.amount },
+        rightAmount = (recurringItems + unpaidItems).sumOf { it.amount },
         rightIsNegative = true
     ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (paidItems.isNotEmpty()) {
-                item { SectionHeader(title = "Paid", total = paidItems.sumOf { it.amount }) }
-                items(paidItems) { item ->
+            if (recurringItems.isNotEmpty()) {
+                item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
+                items(recurringItems) { item ->
                     ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
                 }
             }
@@ -67,6 +68,16 @@ fun ExpensesScreen(
                     SectionHeader(title = "To be paid", total = unpaidItems.sumOf { it.amount })
                 }
                 items(unpaidItems) { item ->
+                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                }
+            }
+
+            if (paidItems.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(8.dp))
+                    SectionHeader(title = "Paid", total = paidItems.sumOf { it.amount })
+                }
+                items(paidItems) { item ->
                     ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
                 }
             }
@@ -153,6 +164,13 @@ fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (item.frequencyLabel != null) {
+                    Text(
+                        "↻ ${item.frequencyLabel}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
             }
 
             Column(horizontalAlignment = Alignment.End) {

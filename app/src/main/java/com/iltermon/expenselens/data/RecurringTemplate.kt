@@ -10,7 +10,10 @@ data class RecurringTemplate(
     val description: String,
     val amount: Double,
     val category: String,
-    val startMonth: String,   // format: "YYYY-MM"
-    val endMonth: String?,    // null = open-ended (recurring), not null = installment
-    val isExpense: Boolean
+    val startMonth: String,        // format: "YYYY-MM"
+    val endMonth: String?,         // null = open-ended, not null = fixed end
+    val isExpense: Boolean,
+    val frequencyInterval: Int = 1,
+    val frequencyUnit: String = "Monthly",
+    val autoPayment: Boolean = true
 )
