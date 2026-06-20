@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 object Routes {
-    const val MAIN = "main"
+    const val EXPENSES = "expenses"
     const val ADD_TRANSACTION = "add_transaction"
 }
 
@@ -16,9 +16,9 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     viewModel: ExpenseLensViewModel
 ) {
-    NavHost(navController = navController, startDestination = Routes.MAIN) {
-        composable(Routes.MAIN) {
-            MainScreen(
+    NavHost(navController = navController, startDestination = Routes.EXPENSES) {
+        composable(Routes.EXPENSES) {
+            ExpensesScreen(
                 viewModel = viewModel,
                 onAddTransaction = { navController.navigate(Routes.ADD_TRANSACTION) }
             )

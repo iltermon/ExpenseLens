@@ -11,6 +11,17 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 
+data class ExpenseItem(
+    val id: Int,
+    val description: String,
+    val amount: Double,
+    val category: String,
+    val date: String,
+    val isExpense: Boolean,
+    val isPaid: Boolean,
+    val isRecurring: Boolean,       // true = came from a recurring template
+    val transactionId: Int? = null  // null if not yet converted to a transaction
+)
 data class DateRange(val start: LocalDate, val end: LocalDate)
 
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
@@ -41,6 +52,49 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             repository.getActiveTemplatesForMonth(month.toString())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val expenseItems: StateFlow<List<ExpenseItem>> = combine(
+        filteredTransactions,
+        activeRecurring
+    ) { transactions, recurring ->
+        val transactionItems = transactions.map { t ->
+            ExpenseItem(
+                id = t.id,
+                description = t.description,
+                amount = t.amount,
+                category = t.category,
+                date = t.date,
+                isExpense = t.isExpense,
+                isPaid = t.isPaid,
+                isRecurring = false,
+                transactionId = t.id
+            )
+        }
+
+        val recurringItems = recurring
+            .filter { template ->
+                // don't show recurring if already recorded as a transaction this period
+                transactions.none { t ->
+                    t.description == template.description &&
+                            t.date.startsWith(_dateRange.value.start.toString().substring(0, 7))
+                }
+            }
+            .map { template ->
+                ExpenseItem(
+                    id = template.id,
+                    description = template.description,
+                    amount = template.amount,
+                    category = template.category,
+                    date = _dateRange.value.start.toString(),
+                    isExpense = template.isExpense,
+                    isPaid = false,
+                    isRecurring = true,
+                    transactionId = null
+                )
+            }
+
+        (transactionItems + recurringItems).sortedBy { it.date }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun goToPreviousMonth() {
         val newMonth = _selectedMonth.value.minusMonths(1)
@@ -78,7 +132,30 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     fun deleteTemplate(template: RecurringTemplate) {
         viewModelScope.launch { repository.deleteTemplate(template) }
     }
-
+    fun togglePaid(item: ExpenseItem) {
+        viewModelScope.launch {
+            if (item.isRecurring && !item.isPaid) {
+                // convert recurring to real transaction
+                repository.insertTransaction(
+                    Transaction(
+                        description = item.description,
+                        amount = item.amount,
+                        category = item.category,
+                        date = java.time.LocalDate.now().toString(),
+                        isExpense = item.isExpense,
+                        isPaid = true
+                    )
+                )
+            } else {
+                item.transactionId?.let { id ->
+                    val transaction = filteredTransactions.value.find { it.id == id }
+                    transaction?.let {
+                        repository.updateTransaction(it.copy(isPaid = !it.isPaid))
+                    }
+                }
+            }
+        }
+    }
     companion object {
         fun factory(repository: ExpenseLensRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

@@ -8,7 +8,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iltermon.expenselens.data.ExpenseLensDatabase
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
-import com.iltermon.expenselens.ui.MainScreen
 import com.iltermon.expenselens.ui.theme.ExpenseLensTheme
 import androidx.navigation.compose.rememberNavController
 import com.iltermon.expenselens.ui.AppNavigation

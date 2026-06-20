@@ -10,6 +10,7 @@ data class Transaction(
     val description: String,
     val amount: Double,
     val category: String,
-    val date: String,        // stored as "YYYY-MM-DD"
-    val isExpense: Boolean   // true = expense, false = income
+    val date: String,
+    val isExpense: Boolean,
+    val isPaid: Boolean = false  // manually added transactions are not paid by default
 )
