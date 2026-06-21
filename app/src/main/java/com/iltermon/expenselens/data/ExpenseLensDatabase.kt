@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class ExpenseLensDatabase : RoomDatabase() {
@@ -63,6 +63,48 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // link generated transactions back to their template
+                db.execSQL(
+                    "ALTER TABLE transactions ADD COLUMN templateId INTEGER"
+                )
+                // recurring_templates: month columns -> full ISO dates, plus accountId.
+                // SQLite can't drop columns, so recreate the table.
+                db.execSQL(
+                    """
+                    CREATE TABLE recurring_templates_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        category TEXT NOT NULL,
+                        startDate TEXT NOT NULL,
+                        endDate TEXT,
+                        isExpense INTEGER NOT NULL,
+                        frequencyInterval INTEGER NOT NULL DEFAULT 1,
+                        frequencyUnit TEXT NOT NULL DEFAULT 'Monthly',
+                        autoPayment INTEGER NOT NULL DEFAULT 1,
+                        accountId INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO recurring_templates_new
+                        (id, description, amount, category, startDate, endDate,
+                         isExpense, frequencyInterval, frequencyUnit, autoPayment, accountId)
+                    SELECT id, description, amount, category,
+                           startMonth || '-01',
+                           CASE WHEN endMonth IS NULL THEN NULL ELSE endMonth || '-01' END,
+                           isExpense, frequencyInterval, frequencyUnit, autoPayment, NULL
+                    FROM recurring_templates
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE recurring_templates")
+                db.execSQL("ALTER TABLE recurring_templates_new RENAME TO recurring_templates")
+            }
+        }
+
         fun getDatabase(context: Context): ExpenseLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -70,7 +112,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
                     ExpenseLensDatabase::class.java,
                     "expenselens_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance

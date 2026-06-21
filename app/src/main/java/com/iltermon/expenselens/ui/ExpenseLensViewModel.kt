@@ -8,6 +8,7 @@ import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
+import com.iltermon.expenselens.data.occurrencesInRange
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -24,6 +25,7 @@ data class ExpenseItem(
     val isPaid: Boolean,
     val isRecurring: Boolean,
     val transactionId: Int? = null,
+    val templateId: Int? = null,        // non-null only for recurring items
     val frequencyLabel: String? = null  // non-null only for recurring items
 )
 data class DateRange(val start: LocalDate, val end: LocalDate)
@@ -31,33 +33,39 @@ data class DateRange(val start: LocalDate, val end: LocalDate)
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
 
     init {
-        val currentMonth = YearMonth.now()
+        // Auto-pay: for every auto-payment template, insert a paid transaction for each
+        // due occurrence from its start date up to (and including) today. Matching is by
+        // (templateId, date) so it's idempotent and frequency-aware.
         viewModelScope.launch {
-            repository.getActiveTemplatesForMonth(currentMonth.toString())
-                .combine(repository.getAllTransactions()) { templates, transactions ->
-                    templates to transactions
-                }
+            combine(
+                repository.getAllTemplates(),
+                repository.getAllTransactions()
+            ) { templates, transactions -> templates to transactions }
                 .collect { (templates, transactions) ->
-                    templates
-                        .filter { it.autoPayment }
-                        .filter { template ->
-                            transactions.none { t ->
-                                t.description == template.description &&
-                                t.date.startsWith(currentMonth.toString())
+                    val today = LocalDate.now()
+                    templates.filter { it.autoPayment }.forEach { template ->
+                        template.occurrencesInRange(LocalDate.parse(template.startDate), today)
+                            .forEach { date ->
+                                val dateStr = date.toString()
+                                val alreadyPaid = transactions.any {
+                                    it.templateId == template.id && it.date == dateStr
+                                }
+                                if (!alreadyPaid) {
+                                    repository.insertTransaction(
+                                        Transaction(
+                                            description = template.description,
+                                            amount = template.amount,
+                                            category = template.category,
+                                            date = dateStr,
+                                            isExpense = template.isExpense,
+                                            isPaid = true,
+                                            accountId = template.accountId,
+                                            templateId = template.id
+                                        )
+                                    )
+                                }
                             }
-                        }
-                        .forEach { template ->
-                            repository.insertTransaction(
-                                Transaction(
-                                    description = template.description,
-                                    amount = template.amount,
-                                    category = template.category,
-                                    date = LocalDate.now().toString(),
-                                    isExpense = template.isExpense,
-                                    isPaid = true
-                                )
-                            )
-                        }
+                    }
                 }
         }
     }
@@ -97,16 +105,14 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val activeRecurring: StateFlow<List<RecurringTemplate>> = _selectedMonth
-        .flatMapLatest { month ->
-            repository.getActiveTemplatesForMonth(month.toString())
-        }
+    val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     val expenseItems: StateFlow<List<ExpenseItem>> = combine(
         filteredTransactions,
-        activeRecurring
-    ) { transactions, recurring ->
+        allTemplates,
+        _dateRange
+    ) { transactions, templates, range ->
         val transactionItems = transactions.map { t ->
             ExpenseItem(
                 id = t.id,
@@ -117,34 +123,36 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 isExpense = t.isExpense,
                 isPaid = t.isPaid,
                 isRecurring = false,
-                transactionId = t.id
+                transactionId = t.id,
+                templateId = t.templateId
             )
         }
 
-        val recurringItems = recurring
-            .filter { template ->
-                // don't show recurring if already recorded as a transaction this period
-                transactions.none { t ->
-                    t.description == template.description &&
-                            t.date.startsWith(_dateRange.value.start.toString().substring(0, 7))
+        val recurringItems = templates.flatMap { template ->
+            val interval = template.frequencyInterval
+            val unit = template.frequencyUnit
+            val label = if (interval == 1) unit else "Every $interval ${unit}s"
+            template.occurrencesInRange(range.start, range.end)
+                // hide an occurrence that's already been recorded as a transaction
+                .filter { date ->
+                    transactions.none { t -> t.templateId == template.id && t.date == date.toString() }
                 }
-            }
-            .map { template ->
-                val interval = template.frequencyInterval
-                val unit = template.frequencyUnit
-                ExpenseItem(
-                    id = template.id,
-                    description = template.description,
-                    amount = template.amount,
-                    category = template.category,
-                    date = _dateRange.value.start.toString(),
-                    isExpense = template.isExpense,
-                    isPaid = false,
-                    isRecurring = true,
-                    transactionId = null,
-                    frequencyLabel = if (interval == 1) unit else "Every $interval ${unit}s"
-                )
-            }
+                .map { date ->
+                    ExpenseItem(
+                        id = template.id,
+                        description = template.description,
+                        amount = template.amount,
+                        category = template.category,
+                        date = date.toString(),
+                        isExpense = template.isExpense,
+                        isPaid = false,
+                        isRecurring = true,
+                        transactionId = null,
+                        templateId = template.id,
+                        frequencyLabel = label
+                    )
+                }
+        }
 
         (transactionItems + recurringItems).sortedBy { it.date }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
@@ -192,15 +200,16 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     fun togglePaid(item: ExpenseItem) {
         viewModelScope.launch {
             if (item.isRecurring && !item.isPaid) {
-                // convert recurring to real transaction
+                // convert this recurring occurrence into a real, paid transaction
                 repository.insertTransaction(
                     Transaction(
                         description = item.description,
                         amount = item.amount,
                         category = item.category,
-                        date = LocalDate.now().toString(),
+                        date = item.date,
                         isExpense = item.isExpense,
-                        isPaid = true
+                        isPaid = true,
+                        templateId = item.templateId
                     )
                 )
             } else {

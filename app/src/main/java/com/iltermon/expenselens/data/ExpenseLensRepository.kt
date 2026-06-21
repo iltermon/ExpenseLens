@@ -24,9 +24,6 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
     fun getAllTemplates(): Flow<List<RecurringTemplate>> =
         db.recurringTemplateDao().getAllTemplates()
 
-    fun getActiveTemplatesForMonth(month: String): Flow<List<RecurringTemplate>> =
-        db.recurringTemplateDao().getActiveTemplatesForMonth(month)
-
     suspend fun insertTemplate(template: RecurringTemplate) =
         db.recurringTemplateDao().insert(template)
 

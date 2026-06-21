@@ -13,5 +13,6 @@ data class Transaction(
     val date: String,
     val isExpense: Boolean,
     val isPaid: Boolean = false,
-    val accountId: Int? = null
+    val accountId: Int? = null,
+    val templateId: Int? = null   // links an auto/recurring-generated transaction back to its template
 )
