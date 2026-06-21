@@ -49,13 +49,14 @@ internal fun RecurringForm(
     categories: List<Category>,
     accounts: List<Account>,
     isExpense: Boolean,
+    shared: TransactionFormState,
     onSave: (RecurringTemplate) -> Unit
 ) {
-    var description by remember { mutableStateOf("") }
-    var amount by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    var description by shared::description
+    var amount by shared::amount
+    var selectedCategory by shared::selectedCategory
+    var selectedAccount by shared::selectedAccount
     var categoryExpanded by remember { mutableStateOf(false) }
-    var selectedAccount by remember { mutableStateOf<Account?>(null) }
     var accountExpanded by remember { mutableStateOf(false) }
 
     var frequencyInterval by remember { mutableStateOf("1") }

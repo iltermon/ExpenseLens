@@ -28,6 +28,7 @@ fun AddExpenseScreen(
     val accounts by viewModel.accounts.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    val sharedFields = rememberTransactionFormState()
 
     Scaffold(
         topBar = {
@@ -54,6 +55,7 @@ fun AddExpenseScreen(
                     categories = expenseCategories,
                     accounts = accounts,
                     isExpense = true,
+                    shared = sharedFields,
                     onSave = { transaction ->
                         viewModel.insertTransaction(transaction)
                         onNavigateBack()
@@ -64,6 +66,7 @@ fun AddExpenseScreen(
                     categories = expenseCategories,
                     accounts = accounts,
                     isExpense = true,
+                    shared = sharedFields,
                     onSave = { template ->
                         viewModel.insertTemplate(template)
                         onNavigateBack()
