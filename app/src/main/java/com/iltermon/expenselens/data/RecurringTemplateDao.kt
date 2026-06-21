@@ -5,15 +5,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RecurringTemplateDao {
-    @Query("""
-        SELECT * FROM recurring_templates 
-        WHERE startMonth <= :month 
-        AND (endMonth IS NULL OR endMonth >= :month)
-    """)
-    fun getActiveTemplatesForMonth(month: String): Flow<List<RecurringTemplate>>
-
     @Query("SELECT * FROM recurring_templates")
     fun getAllTemplates(): Flow<List<RecurringTemplate>>
+
+    @Query("SELECT * FROM recurring_templates WHERE id = :id")
+    suspend fun getById(id: Int): RecurringTemplate?
+
+    @Query("DELETE FROM recurring_templates")
+    suspend fun deleteAll()
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(template: RecurringTemplate)
