@@ -1,5 +1,7 @@
 package com.iltermon.expenselens.ui
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -9,9 +11,13 @@ import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
 import com.iltermon.expenselens.data.occurrencesInRange
+import com.iltermon.expenselens.ui.dev.DataImporter
+import com.iltermon.expenselens.ui.dev.XlsxReader
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -195,6 +201,42 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
 
     fun deleteCategory(category: Category) {
         viewModelScope.launch { repository.deleteCategory(category) }
+    }
+
+    // Dev-only: one-time import of the user's ExpenseLens.xlsx (Settings → Developer Options).
+    private val _importStatus = MutableStateFlow<String?>(null)
+    val importStatus: StateFlow<String?> = _importStatus.asStateFlow()
+
+    fun importFromUri(context: Context, uri: Uri) {
+        viewModelScope.launch {
+            _importStatus.value = "Importing…"
+            try {
+                // Run the whole pipeline off the main thread: clearAll() (RoomDatabase.clearAllTables)
+                // is a blocking call and would otherwise crash with "cannot access database on the
+                // main thread".
+                val r = withContext(Dispatchers.IO) {
+                    val sheets = XlsxReader.read(context, uri)
+                    DataImporter.import(repository, sheets)
+                }
+                _importStatus.value =
+                    "Imported ${r.expenses} expenses, ${r.income} income, ${r.templates} recurring, " +
+                        "${r.accounts} accounts, ${r.categories} categories."
+            } catch (e: Exception) {
+                _importStatus.value = "Import failed: ${e.message}"
+            }
+        }
+    }
+
+    fun clearAllData() {
+        viewModelScope.launch {
+            _importStatus.value = "Clearing…"
+            try {
+                withContext(Dispatchers.IO) { repository.clearAll() }
+                _importStatus.value = "All data cleared."
+            } catch (e: Exception) {
+                _importStatus.value = "Clear failed: ${e.message}"
+            }
+        }
     }
 
     fun togglePaid(item: ExpenseItem) {

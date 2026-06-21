@@ -1,5 +1,7 @@
 package com.iltermon.expenselens.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -34,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.BuildConfig
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 
@@ -49,6 +55,13 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
 
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var showClearDataDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val importStatus by viewModel.importStatus.collectAsState()
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let { viewModel.importFromUri(context, it) } }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) }
@@ -73,6 +86,40 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
                 CategoryRow(category = category, onDelete = { viewModel.deleteCategory(category) })
                 HorizontalDivider()
             }
+
+            if (BuildConfig.DEBUG) {
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+                item {
+                    Text(
+                        text = "Developer Options",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    HorizontalDivider()
+                }
+                item {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Button(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+                            Text("Import from Excel (.xlsx)")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { showClearDataDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text("Delete all data")
+                        }
+                        importStatus?.let { status ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = status, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -92,6 +139,25 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
             onConfirm = { category ->
                 viewModel.insertCategory(category)
                 showAddCategoryDialog = false
+            }
+        )
+    }
+
+    if (showClearDataDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDataDialog = false },
+            title = { Text("Delete all data?") },
+            text = { Text("This permanently removes all transactions, recurring templates, accounts and categories. This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.clearAllData()
+                        showClearDataDialog = false
+                    }
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDataDialog = false }) { Text("Cancel") }
             }
         )
     }

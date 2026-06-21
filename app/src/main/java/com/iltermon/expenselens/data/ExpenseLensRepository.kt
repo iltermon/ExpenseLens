@@ -52,4 +52,7 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
 
     suspend fun deleteCategory(category: Category) =
         db.categoryDao().delete(category)
+
+    // Dev-only: used by the one-time Excel importer for a fresh, deterministic load.
+    suspend fun clearAll() = db.clearAllTables()
 }
