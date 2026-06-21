@@ -1,9 +1,16 @@
 package com.iltermon.expenselens.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "transactions")
+// Unique (templateId, date) enforces auto-pay idempotency at the DB level: a recurring
+// template can produce at most one transaction per occurrence date. SQLite treats NULLs as
+// distinct, so manually-entered transactions (templateId = null) are never constrained.
+@Entity(
+    tableName = "transactions",
+    indices = [Index(value = ["templateId", "date"], unique = true)]
+)
 data class Transaction(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

@@ -7,7 +7,6 @@ import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
-import java.time.YearMonth
 
 /**
  * One-time migration of the user's `ExpenseLens.xlsx` prototype into the Room database.
@@ -39,9 +38,10 @@ object DataImporter {
     )
 
     /**
-     * Clears the DB and loads the three source sheets. Recurring templates are imported with
-     * auto-pay on and their start anchored to the current month (see [resetStartToCurrentMonth])
-     * to avoid backfilling years of historical occurrences.
+     * Clears the DB and loads the three source sheets. Recurring templates keep their original
+     * start/end dates so each occurrence lands in its real month — this is what makes per-month
+     * totals match the spreadsheet. With auto-pay on, the ViewModel then backfills a paid
+     * transaction for every past occurrence up to today.
      */
     suspend fun import(
         repo: ExpenseLensRepository,
@@ -116,17 +116,18 @@ object DataImporter {
             incomeCount++
         }
 
-        // Recurring → templates (auto-pay on, start reset to this month, original end kept).
+        // Recurring → templates (auto-pay on; original start/end kept so occurrences land in
+        // their real months and per-month totals match the spreadsheet).
         var templateCount = 0
         recurring.forEach { row ->
-            val origStart = excelSerialToIso(cell(row, 3)) ?: return@forEach
+            val startDate = excelSerialToIso(cell(row, 3)) ?: return@forEach
             val (interval, unit) = mapFrequency(cell(row, 5))
             repo.insertTemplate(
                 RecurringTemplate(
                     description = cell(row, 0).orEmpty(),
                     amount = cell(row, 1)?.toDoubleOrNull() ?: 0.0,
                     category = cell(row, 2).orEmpty(),
-                    startDate = resetStartToCurrentMonth(origStart),
+                    startDate = startDate,
                     endDate = cell(row, 4)?.let { excelSerialToIso(it) },
                     isExpense = true,
                     frequencyInterval = interval,
@@ -161,12 +162,5 @@ object DataImporter {
         "Yearly" -> 1 to "Year"
         "6-Weekly" -> 6 to "Week"
         else -> 1 to "Month" // "Monthly" and anything unrecognized
-    }
-
-    /** Re-anchor to the current month, preserving day-of-month (clamped to the month's length). */
-    private fun resetStartToCurrentMonth(origStartIso: String): String {
-        val origDay = LocalDate.parse(origStartIso).dayOfMonth
-        val ym = YearMonth.now()
-        return ym.atDay(minOf(origDay, ym.lengthOfMonth())).toString()
     }
 }

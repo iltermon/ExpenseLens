@@ -47,16 +47,26 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 repository.getAllTemplates(),
                 repository.getAllTransactions()
             ) { templates, transactions -> templates to transactions }
-                .collect { (templates, transactions) ->
+               .collect { (templates, _) ->
                     val today = LocalDate.now()
-                    templates.filter { it.autoPayment }.forEach { template ->
+                    val autoTemplates = templates.filter { it.autoPayment }
+                    if (autoTemplates.isEmpty()) return@collect
+
+                    // Idempotency snapshot. The `transactions` value from the combine above can
+                    // lag behind rows we inserted on a previous firing — during a bulk import Room
+                    // emits a backlog of stale lists, so trusting it re-inserts the same occurrence
+                    // 2–3×. Read a fresh authoritative set instead: collect is sequential, so by the
+                    // time this runs the prior firing's inserts have committed and show up here.
+                    val existingKeys = repository.getAllTransactions().first()
+                        .filter { it.templateId != null }
+                        .mapTo(HashSet()) { it.templateId to it.date }
+
+                    autoTemplates.forEach { template ->
                         template.occurrencesInRange(LocalDate.parse(template.startDate), today)
                             .forEach { date ->
                                 val dateStr = date.toString()
-                                val alreadyPaid = transactions.any {
-                                    it.templateId == template.id && it.date == dateStr
-                                }
-                                if (!alreadyPaid) {
+                                val key = template.id to dateStr
+                                if (existingKeys.add(key)) {
                                     repository.insertTransaction(
                                         Transaction(
                                             description = template.description,

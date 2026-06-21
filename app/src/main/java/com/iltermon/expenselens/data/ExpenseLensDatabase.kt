@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class ExpenseLensDatabase : RoomDatabase() {
@@ -105,6 +105,17 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Enforce auto-pay idempotency: at most one transaction per (templateId, date).
+                // Name must match Room's generated index name for the Transaction entity.
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_templateId_date " +
+                        "ON transactions (templateId, date)"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ExpenseLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -112,7 +123,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
                     ExpenseLensDatabase::class.java,
                     "expenselens_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                 INSTANCE = instance
                 instance
