@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.iltermon.expenselens.BuildConfig
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 
@@ -87,36 +86,34 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
                 HorizontalDivider()
             }
 
-            if (BuildConfig.DEBUG) {
-                item { Spacer(modifier = Modifier.height(24.dp)) }
-                item {
-                    Text(
-                        text = "Developer Options",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    HorizontalDivider()
-                }
-                item {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Button(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
-                            Text("Import from Excel (.xlsx)")
-                        }
+            item { Spacer(modifier = Modifier.height(24.dp)) }
+            item {
+                Text(
+                    text = "Advanced settings",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                HorizontalDivider()
+            }
+            item {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Button(onClick = { importLauncher.launch(arrayOf("*/*")) }) {
+                        Text("Import from Excel (.xlsx)")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { showClearDataDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Text("Clear Transactions")
+                    }
+                    importStatus?.let { status ->
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
-                            onClick = { showClearDataDialog = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
-                        ) {
-                            Text("Delete all data")
-                        }
-                        importStatus?.let { status ->
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = status, style = MaterialTheme.typography.bodySmall)
-                        }
+                        Text(text = status, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -146,21 +143,22 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
-            title = { Text("Delete all data?") },
-            text = { Text("This permanently removes all transactions, recurring templates, accounts and categories. This cannot be undone.") },
+            title = { Text("Clear transactions?") },
+            text = { Text("This permanently removes all transactions and recurring templates. Accounts, categories and settings are kept. This cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.clearAllData()
+                        viewModel.clearTransactions()
                         showClearDataDialog = false
                     }
-                ) { Text("Delete") }
+                ) { Text("Clear") }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDataDialog = false }) { Text("Cancel") }
             }
         )
     }
+
 }
 
 @Composable

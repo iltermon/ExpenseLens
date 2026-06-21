@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
-    entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class],
-    version = 7,
+    entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class, AppSetting::class],
+    version = 8,
     exportSchema = false
 )
 abstract class ExpenseLensDatabase : RoomDatabase() {
@@ -17,6 +17,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
     abstract fun recurringTemplateDao(): RecurringTemplateDao
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun appSettingDao(): AppSettingDao
 
     companion object {
         @Volatile
@@ -116,6 +117,16 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Additive: key/value table for app preferences. Cannot fail on existing data.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS app_settings " +
+                        "(`key` TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY(`key`))"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ExpenseLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -123,7 +134,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
                     ExpenseLensDatabase::class.java,
                     "expenselens_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

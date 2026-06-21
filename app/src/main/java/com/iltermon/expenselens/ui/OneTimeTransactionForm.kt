@@ -39,7 +39,10 @@ internal fun OneTimeTransactionForm(
     accounts: List<Account>,
     isExpense: Boolean,
     shared: TransactionFormState,
-    onSave: (Transaction) -> Unit
+    onSave: (Transaction) -> Unit,
+    initialDate: LocalDate = LocalDate.now(),
+    initialIsPaid: Boolean = true,
+    saveLabel: String? = null
 ) {
     var description by shared::description
     var amount by shared::amount
@@ -47,8 +50,8 @@ internal fun OneTimeTransactionForm(
     var selectedAccount by shared::selectedAccount
     var categoryExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
-    var date by remember { mutableStateOf(LocalDate.now()) }
-    var isPaid by remember { mutableStateOf(true) }
+    var date by remember { mutableStateOf(initialDate) }
+    var isPaid by remember { mutableStateOf(initialIsPaid) }
 
     Column(
         modifier = Modifier
@@ -140,7 +143,7 @@ internal fun OneTimeTransactionForm(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isExpense) "Save Expense" else "Save Income")
+            Text(saveLabel ?: if (isExpense) "Save Expense" else "Save Income")
         }
     }
 }

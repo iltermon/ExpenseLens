@@ -50,7 +50,13 @@ internal fun RecurringForm(
     accounts: List<Account>,
     isExpense: Boolean,
     shared: TransactionFormState,
-    onSave: (RecurringTemplate) -> Unit
+    onSave: (RecurringTemplate) -> Unit,
+    initialStartDate: LocalDate = LocalDate.now(),
+    initialEndDate: LocalDate? = null,
+    initialInterval: Int = 1,
+    initialUnit: String = "Month",
+    initialAutoPayment: Boolean = isExpense,
+    saveLabel: String? = null
 ) {
     var description by shared::description
     var amount by shared::amount
@@ -59,17 +65,19 @@ internal fun RecurringForm(
     var categoryExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
 
-    var frequencyInterval by remember { mutableStateOf("1") }
-    var frequencyUnit by remember { mutableStateOf(frequencyUnits[2]) } // Monthly default
+    var frequencyInterval by remember { mutableStateOf(initialInterval.toString()) }
+    var frequencyUnit by remember {
+        mutableStateOf(if (initialUnit in frequencyUnits) initialUnit else frequencyUnits[2])
+    }
     var unitExpanded by remember { mutableStateOf(false) }
 
     val now = LocalDate.now()
-    var startDate by remember { mutableStateOf(now) }
-    var isFinite by remember { mutableStateOf(false) }
-    var endDate by remember { mutableStateOf(now.plusMonths(1)) }
+    var startDate by remember { mutableStateOf(initialStartDate) }
+    var isFinite by remember { mutableStateOf(initialEndDate != null) }
+    var endDate by remember { mutableStateOf(initialEndDate ?: now.plusMonths(1)) }
 
     val intervalInt = frequencyInterval.toIntOrNull()?.coerceAtLeast(1) ?: 1
-    var autoPayment by remember { mutableStateOf(isExpense) }
+    var autoPayment by remember { mutableStateOf(initialAutoPayment) }
 
     Column(
         modifier = Modifier
@@ -211,7 +219,7 @@ internal fun RecurringForm(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isExpense) "Save Recurring Expense" else "Save Recurring Income")
+            Text(saveLabel ?: if (isExpense) "Save Recurring Expense" else "Save Recurring Income")
         }
     }
 }

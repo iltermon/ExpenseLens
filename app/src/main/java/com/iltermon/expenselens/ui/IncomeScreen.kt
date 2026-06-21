@@ -20,9 +20,12 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun IncomeScreen(
     viewModel: ExpenseLensViewModel,
-    onAddIncome: () -> Unit
+    onAddIncome: () -> Unit,
+    onEditTransaction: (Int) -> Unit,
+    onEditTemplate: (Int) -> Unit
 ) {
     val expenseItems by viewModel.expenseItems.collectAsState()
+    val templates by viewModel.allTemplates.collectAsState()
 
     val items = expenseItems.filter { !it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -46,7 +49,7 @@ fun IncomeScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 
@@ -56,7 +59,7 @@ fun IncomeScreen(
                     SectionHeader(title = "Pending", total = pendingItems.sumOf { it.amount })
                 }
                 items(pendingItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 
@@ -66,7 +69,7 @@ fun IncomeScreen(
                     SectionHeader(title = "Received", total = receivedItems.sumOf { it.amount })
                 }
                 items(receivedItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 

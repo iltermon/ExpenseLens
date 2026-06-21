@@ -124,6 +124,21 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
+    // True while a slow write (delete/clear) runs, so the UI can show a blocking overlay.
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    private fun launchBusy(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            _busy.value = true
+            try {
+                block()
+            } finally {
+                _busy.value = false
+            }
+        }
+    }
+
     val expenseItems: StateFlow<List<ExpenseItem>> = combine(
         filteredTransactions,
         allTemplates,
@@ -197,6 +212,33 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.insertTemplate(template) }
     }
 
+    fun updateTransaction(transaction: Transaction) {
+        viewModelScope.launch { repository.updateTransaction(transaction) }
+    }
+
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch { repository.deleteTransaction(transaction) }
+    }
+
+    fun deleteTransactionById(id: Int) {
+        launchBusy { repository.deleteTransactionById(id) }
+    }
+
+    fun updateTemplate(template: RecurringTemplate) {
+        viewModelScope.launch { repository.updateTemplate(template) }
+    }
+
+    /** Deletes a recurring series. When [deleteHistory] is true, also removes every transaction
+     *  ever generated from it; otherwise past recorded payments are kept as standalone rows. */
+    /** Deletes a recurring series and all its generated transactions (delete = fix a mistake). */
+    fun deleteTemplate(template: RecurringTemplate) {
+        launchBusy { repository.deleteSeries(template) }
+    }
+
+    suspend fun getTransactionById(id: Int): Transaction? = repository.getTransactionById(id)
+
+    suspend fun getTemplateById(id: Int): RecurringTemplate? = repository.getTemplateById(id)
+
     fun insertAccount(account: Account) {
         viewModelScope.launch { repository.insertAccount(account) }
     }
@@ -237,12 +279,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
 
-    fun clearAllData() {
-        viewModelScope.launch {
+    fun clearTransactions() {
+        launchBusy {
             _importStatus.value = "Clearing…"
             try {
-                withContext(Dispatchers.IO) { repository.clearAll() }
-                _importStatus.value = "All data cleared."
+                repository.clearTransactionsAndTemplates()
+                _importStatus.value = "Transactions and recurring templates cleared."
             } catch (e: Exception) {
                 _importStatus.value = "Clear failed: ${e.message}"
             }

@@ -1,5 +1,6 @@
 package com.iltermon.expenselens.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +33,12 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun ExpensesScreen(
     viewModel: ExpenseLensViewModel,
-    onAddTransaction: () -> Unit
+    onAddTransaction: () -> Unit,
+    onEditTransaction: (Int) -> Unit,
+    onEditTemplate: (Int) -> Unit
 ) {
     val expenseItems by viewModel.expenseItems.collectAsState()
+    val templates by viewModel.allTemplates.collectAsState()
 
     val items = expenseItems.filter { it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -58,7 +62,7 @@ fun ExpensesScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 
@@ -68,7 +72,7 @@ fun ExpensesScreen(
                     SectionHeader(title = "To be paid", total = unpaidItems.sumOf { it.amount })
                 }
                 items(unpaidItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 
@@ -78,7 +82,7 @@ fun ExpensesScreen(
                     SectionHeader(title = "Paid", total = paidItems.sumOf { it.amount })
                 }
                 items(paidItems) { item ->
-                    ExpenseItemCard(item = item, onTogglePaid = { viewModel.togglePaid(it) })
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
             }
 
@@ -121,10 +125,12 @@ fun SectionHeader(title: String, total: Double) {
 }
 
 @Composable
-fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit) {
+fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit, onClick: () -> Unit = {}) {
     val dateFormatter = DateTimeFormatter.ofPattern("d MMM")
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (item.isPaid)
