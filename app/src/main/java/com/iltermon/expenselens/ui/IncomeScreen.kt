@@ -40,7 +40,9 @@ fun IncomeScreen(
         leftAmount = items.sumOf { it.amount },
         rightLabel = "Pending Income",
         rightAmount = (recurringItems + pendingItems).sumOf { it.amount },
-        rightIsNegative = false
+        rightIsNegative = false,
+        leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
+        rightRecurring = recurringItems.sumOf { it.amount }
     ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

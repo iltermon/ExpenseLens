@@ -19,7 +19,10 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.Year
 import java.time.YearMonth
+
+enum class AnalyticsPeriod { MONTH, YEAR }
 
 data class ExpenseItem(
     val id: Int,
@@ -32,7 +35,8 @@ data class ExpenseItem(
     val isRecurring: Boolean,
     val transactionId: Int? = null,
     val templateId: Int? = null,        // non-null only for recurring items
-    val frequencyLabel: String? = null  // non-null only for recurring items
+    val frequencyLabel: String? = null, // non-null only for recurring items
+    val accountId: Int? = null
 )
 data class DateRange(val start: LocalDate, val end: LocalDate)
 
@@ -139,11 +143,13 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
 
-    val expenseItems: StateFlow<List<ExpenseItem>> = combine(
-        filteredTransactions,
-        allTemplates,
-        _dateRange
-    ) { transactions, templates, range ->
+    // Merges concrete transactions (already filtered to [range]) with the projected occurrences of
+    // every recurring template in [range], hiding occurrences that already exist as a transaction.
+    private fun mergeItems(
+        transactions: List<Transaction>,
+        templates: List<RecurringTemplate>,
+        range: DateRange
+    ): List<ExpenseItem> {
         val transactionItems = transactions.map { t ->
             ExpenseItem(
                 id = t.id,
@@ -155,14 +161,25 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 isPaid = t.isPaid,
                 isRecurring = false,
                 transactionId = t.id,
-                templateId = t.templateId
+                templateId = t.templateId,
+                accountId = t.accountId
             )
         }
 
         val recurringItems = templates.flatMap { template ->
             val interval = template.frequencyInterval
             val unit = template.frequencyUnit
-            val label = if (interval == 1) unit else "Every $interval ${unit}s"
+            val label = if (interval == 1) {
+                when (unit) {
+                    "Day" -> "Daily"
+                    "Week" -> "Weekly"
+                    "Month" -> "Monthly"
+                    "Year" -> "Yearly"
+                    else -> unit
+                }
+            } else {
+                "Every $interval ${unit}s"
+            }
             template.occurrencesInRange(range.start, range.end)
                 // hide an occurrence that's already been recorded as a transaction
                 .filter { date ->
@@ -180,13 +197,79 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         isRecurring = true,
                         transactionId = null,
                         templateId = template.id,
-                        frequencyLabel = label
+                        frequencyLabel = label,
+                        accountId = template.accountId
                     )
                 }
         }
 
-        (transactionItems + recurringItems).sortedBy { it.date }
+        return (transactionItems + recurringItems).sortedBy { it.date }
+    }
+
+    val expenseItems: StateFlow<List<ExpenseItem>> = combine(
+        filteredTransactions,
+        allTemplates,
+        _dateRange
+    ) { transactions, templates, range ->
+        mergeItems(transactions, templates, range)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    // --- Analytics tab: in MONTH mode it shares the global month/range with the Expenses/Income
+    // tabs (changing the month anywhere moves all three); the YEAR mode is Analytics-only. ---
+    private val _analyticsPeriod = MutableStateFlow(AnalyticsPeriod.MONTH)
+    val analyticsPeriod: StateFlow<AnalyticsPeriod> = _analyticsPeriod.asStateFlow()
+
+    private val _analyticsYear = MutableStateFlow(Year.now())
+    val analyticsYear: StateFlow<Year> = _analyticsYear.asStateFlow()
+
+    private val analyticsDateRange: StateFlow<DateRange> = combine(
+        _analyticsPeriod, _dateRange, _analyticsYear
+    ) { mode, globalRange, year ->
+        when (mode) {
+            AnalyticsPeriod.MONTH -> globalRange
+            AnalyticsPeriod.YEAR -> DateRange(year.atDay(1), year.atDay(year.length()))
+        }
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS),
+        DateRange(YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth())
+    )
+
+    private val analyticsFilteredTransactions: StateFlow<List<Transaction>> = combine(
+        repository.getAllTransactions(),
+        analyticsDateRange
+    ) { transactions, range ->
+        transactions.filter { transaction ->
+            val date = LocalDate.parse(transaction.date)
+            date >= range.start && date <= range.end
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val analyticsItems: StateFlow<List<ExpenseItem>> = combine(
+        analyticsFilteredTransactions,
+        allTemplates,
+        analyticsDateRange
+    ) { transactions, templates, range ->
+        mergeItems(transactions, templates, range)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    fun setAnalyticsPeriod(mode: AnalyticsPeriod) {
+        _analyticsPeriod.value = mode
+    }
+
+    fun analyticsPrevious() {
+        when (_analyticsPeriod.value) {
+            AnalyticsPeriod.MONTH -> goToPreviousMonth()
+            AnalyticsPeriod.YEAR -> _analyticsYear.value = _analyticsYear.value.minusYears(1)
+        }
+    }
+
+    fun analyticsNext() {
+        when (_analyticsPeriod.value) {
+            AnalyticsPeriod.MONTH -> goToNextMonth()
+            AnalyticsPeriod.YEAR -> _analyticsYear.value = _analyticsYear.value.plusYears(1)
+        }
+    }
 
     fun goToPreviousMonth() {
         val newMonth = _selectedMonth.value.minusMonths(1)

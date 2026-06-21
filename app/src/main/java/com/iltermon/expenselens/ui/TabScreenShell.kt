@@ -53,6 +53,8 @@ fun TabScreenShell(
     rightLabel: String,
     rightAmount: Double,
     rightIsNegative: Boolean = false,
+    leftRecurring: Double? = null,
+    rightRecurring: Double? = null,
     content: @Composable () -> Unit
 ) {
     val selectedMonth by viewModel.selectedMonth.collectAsState()
@@ -89,7 +91,9 @@ fun TabScreenShell(
                 leftAmount = leftAmount,
                 rightLabel = rightLabel,
                 rightAmount = rightAmount,
-                rightIsNegative = rightIsNegative
+                rightIsNegative = rightIsNegative,
+                leftRecurring = leftRecurring,
+                rightRecurring = rightRecurring
             )
         }
     ) { padding ->
@@ -154,12 +158,14 @@ private fun MonthSelectorRow(
 }
 
 @Composable
-private fun SummaryBar(
+internal fun SummaryBar(
     leftLabel: String,
     leftAmount: Double,
     rightLabel: String,
     rightAmount: Double,
-    rightIsNegative: Boolean
+    rightIsNegative: Boolean,
+    leftRecurring: Double? = null,
+    rightRecurring: Double? = null
 ) {
     Surface(tonalElevation = 4.dp) {
         Row(
@@ -167,7 +173,7 @@ private fun SummaryBar(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Column {
                 Text(
@@ -180,6 +186,7 @@ private fun SummaryBar(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                RecurringCaption(leftRecurring)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
@@ -194,8 +201,20 @@ private fun SummaryBar(
                     color = if (rightIsNegative) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.primary
                 )
+                RecurringCaption(rightRecurring)
             }
         }
+    }
+}
+
+@Composable
+private fun RecurringCaption(amount: Double?) {
+    if (amount != null) {
+        Text(
+            "↻ €${"%.2f".format(amount)} recurring",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

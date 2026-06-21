@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
@@ -55,6 +58,8 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
     var showAddAccountDialog by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var editLimitAccount by remember { mutableStateOf<Account?>(null) }
+    var editLimitCategory by remember { mutableStateOf<Category?>(null) }
 
     val context = LocalContext.current
     val importStatus by viewModel.importStatus.collectAsState()
@@ -73,7 +78,11 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
                 HorizontalDivider()
             }
             items(accounts) { account ->
-                AccountRow(account = account, onDelete = { viewModel.deleteAccount(account) })
+                AccountRow(
+                    account = account,
+                    onEditLimit = { editLimitAccount = account },
+                    onDelete = { viewModel.deleteAccount(account) }
+                )
                 HorizontalDivider()
             }
             item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -82,7 +91,11 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
                 HorizontalDivider()
             }
             items(categories) { category ->
-                CategoryRow(category = category, onDelete = { viewModel.deleteCategory(category) })
+                CategoryRow(
+                    category = category,
+                    onEditLimit = { editLimitCategory = category },
+                    onDelete = { viewModel.deleteCategory(category) }
+                )
                 HorizontalDivider()
             }
 
@@ -140,6 +153,32 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel) {
         )
     }
 
+    editLimitAccount?.let { account ->
+        LimitsDialog(
+            title = "${account.name} limit",
+            currentMonthly = account.limitMonthly,
+            currentYearly = account.limitYearly,
+            onDismiss = { editLimitAccount = null },
+            onConfirm = { monthly, yearly ->
+                viewModel.insertAccount(account.copy(limitMonthly = monthly, limitYearly = yearly))
+                editLimitAccount = null
+            }
+        )
+    }
+
+    editLimitCategory?.let { category ->
+        LimitsDialog(
+            title = "${category.name} limit",
+            currentMonthly = category.limitMonthly,
+            currentYearly = category.limitYearly,
+            onDismiss = { editLimitCategory = null },
+            onConfirm = { monthly, yearly ->
+                viewModel.insertCategory(category.copy(limitMonthly = monthly, limitYearly = yearly))
+                editLimitCategory = null
+            }
+        )
+    }
+
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
@@ -178,7 +217,7 @@ private fun SectionHeader(title: String, onAdd: () -> Unit) {
 }
 
 @Composable
-private fun AccountRow(account: Account, onDelete: () -> Unit) {
+private fun AccountRow(account: Account, onEditLimit: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,9 +225,13 @@ private fun AccountRow(account: Account, onDelete: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(text = account.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(text = account.type, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LimitSubtitle(account.limitMonthly, account.limitYearly)
+        }
+        IconButton(onClick = onEditLimit) {
+            Icon(Icons.Default.Edit, contentDescription = "Set account limit")
         }
         IconButton(onClick = onDelete) {
             Icon(Icons.Default.Delete, contentDescription = "Delete account")
@@ -197,7 +240,7 @@ private fun AccountRow(account: Account, onDelete: () -> Unit) {
 }
 
 @Composable
-private fun CategoryRow(category: Category, onDelete: () -> Unit) {
+private fun CategoryRow(category: Category, onEditLimit: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +248,7 @@ private fun CategoryRow(category: Category, onDelete: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(text = category.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             val typeLabel = when (category.type) {
                 "expense" -> "Expense only"
@@ -213,11 +256,80 @@ private fun CategoryRow(category: Category, onDelete: () -> Unit) {
                 else -> "Both"
             }
             Text(text = typeLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LimitSubtitle(category.limitMonthly, category.limitYearly)
+        }
+        IconButton(onClick = onEditLimit) {
+            Icon(Icons.Default.Edit, contentDescription = "Set category limit")
         }
         IconButton(onClick = onDelete) {
             Icon(Icons.Default.Delete, contentDescription = "Delete category")
         }
     }
+}
+
+@Composable
+private fun LimitSubtitle(limitMonthly: Double?, limitYearly: Double?) {
+    if (limitMonthly == null && limitYearly == null) return
+    val parts = buildList {
+        limitMonthly?.let { add("€${"%.0f".format(it)}/mo") }
+        limitYearly?.let { add("€${"%.0f".format(it)}/yr") }
+    }
+    Text(
+        text = "Limit ${parts.joinToString(" · ")}",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LimitsDialog(
+    title: String,
+    currentMonthly: Double?,
+    currentYearly: Double?,
+    onDismiss: () -> Unit,
+    onConfirm: (monthly: Double?, yearly: Double?) -> Unit
+) {
+    var monthly by remember { mutableStateOf(currentMonthly?.let { "%.2f".format(it) } ?: "") }
+    var yearly by remember { mutableStateOf(currentYearly?.let { "%.2f".format(it) } ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = monthly,
+                    onValueChange = { monthly = it },
+                    label = { Text("Monthly limit (€)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = yearly,
+                    onValueChange = { yearly = it },
+                    label = { Text("Yearly limit (€)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    "Leave a field empty to remove that limit. Limits use net (expenses − income).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(monthly.trim().toDoubleOrNull(), yearly.trim().toDoubleOrNull())
+            }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
