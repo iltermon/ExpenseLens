@@ -8,7 +8,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Transaction
 import java.time.LocalDate
 
@@ -55,8 +56,8 @@ fun EditTransactionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Transaction") },
-                navigationIcon = { TextButton(onClick = onNavigateBack) { Text("Back") } }
+                title = { Text(stringResource(R.string.edit_transaction_title)) },
+                navigationIcon = { BackButton(onClick = onNavigateBack) }
             )
         }
     ) { padding ->
@@ -77,7 +78,7 @@ fun EditTransactionScreen(
                     shared = shared,
                     initialDate = LocalDate.parse(t.date),
                     initialIsPaid = t.isPaid,
-                    saveLabel = "Update",
+                    saveLabel = stringResource(R.string.action_update),
                     onSave = { edited ->
                         viewModel.updateTransaction(edited.copy(id = t.id, templateId = t.templateId))
                         onNavigateBack()

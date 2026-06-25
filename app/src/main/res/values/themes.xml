@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.ExpenseLens" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Host theme for the (Compose) activity. AppCompat-based so AppCompatActivity can apply the
+         per-app language; DayNight keeps the window background following system dark mode. All
+         in-app colors come from the Compose ExpenseLensTheme, not this style. The explicit
+         windowBackground avoids a black flash while the activity recreates on a language change. -->
+    <style name="Theme.ExpenseLens" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
 </resources>

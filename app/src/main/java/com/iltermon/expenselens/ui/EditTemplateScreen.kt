@@ -8,7 +8,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.RecurringTemplate
 import java.time.LocalDate
 
@@ -55,8 +56,8 @@ fun EditTemplateScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Recurring") },
-                navigationIcon = { TextButton(onClick = onNavigateBack) { Text("Back") } }
+                title = { Text(stringResource(R.string.edit_recurring_title)) },
+                navigationIcon = { BackButton(onClick = onNavigateBack) }
             )
         }
     ) { padding ->
@@ -80,7 +81,7 @@ fun EditTemplateScreen(
                     initialInterval = template.frequencyInterval,
                     initialUnit = template.frequencyUnit,
                     initialAutoPayment = template.autoPayment,
-                    saveLabel = "Update",
+                    saveLabel = stringResource(R.string.action_update),
                     onSave = { edited ->
                         viewModel.updateTemplate(edited.copy(id = template.id))
                         onNavigateBack()

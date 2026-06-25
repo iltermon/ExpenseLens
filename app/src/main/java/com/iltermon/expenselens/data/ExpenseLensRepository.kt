@@ -85,4 +85,11 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
 
     // Dev-only: used by the one-time Excel importer for a fresh, deterministic load.
     suspend fun clearAll() = db.clearAllTables()
+
+    // App settings (key/value) — e.g. the chosen currency symbol.
+    fun observeSetting(key: String): Flow<String?> =
+        db.appSettingDao().observe(key)
+
+    suspend fun putSetting(key: String, value: String) =
+        db.appSettingDao().upsert(AppSetting(key, value))
 }

@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.RecurringTemplate
 
 /**
@@ -48,31 +50,31 @@ fun ExpenseItemRow(
         if (template != null) {
             AlertDialog(
                 onDismissRequest = { showDelete = false },
-                title = { Text("Delete recurring \"${item.description}\"?") },
-                text = { Text("Removes the recurring payment and every entry it created. To stop it going forward instead, edit it and set an end date.") },
+                title = { Text(stringResource(R.string.delete_recurring_title, item.description)) },
+                text = { Text(stringResource(R.string.delete_recurring_message)) },
                 confirmButton = {
                     TextButton(onClick = {
                         viewModel.deleteTemplate(template)
                         showDelete = false
-                    }) { Text("Delete") }
+                    }) { Text(stringResource(R.string.action_delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDelete = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDelete = false }) { Text(stringResource(R.string.action_cancel)) }
                 }
             )
         } else {
             AlertDialog(
                 onDismissRequest = { showDelete = false },
-                title = { Text("Delete transaction?") },
-                text = { Text("\"${item.description}\" will be permanently removed.") },
+                title = { Text(stringResource(R.string.delete_transaction_title)) },
+                text = { Text(stringResource(R.string.delete_transaction_message, item.description)) },
                 confirmButton = {
                     TextButton(onClick = {
                         item.transactionId?.let { viewModel.deleteTransactionById(it) }
                         showDelete = false
-                    }) { Text("Delete") }
+                    }) { Text(stringResource(R.string.action_delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDelete = false }) { Text("Cancel") }
+                    TextButton(onClick = { showDelete = false }) { Text(stringResource(R.string.action_cancel)) }
                 }
             )
         }

@@ -25,8 +25,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Transaction
@@ -63,17 +65,17 @@ internal fun OneTimeTransactionForm(
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Description") },
+            label = { Text(stringResource(R.string.form_description)) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = amount,
             onValueChange = { amount = it },
-            label = { Text("Amount (€)") },
+            label = { Text(stringResource(R.string.form_amount, LocalCurrencySymbol.current)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
-        DatePickerField(label = "Date", value = date, onValueChange = {
+        DatePickerField(label = stringResource(R.string.form_date), value = date, onValueChange = {
             date = it
             isPaid = (it == LocalDate.now())
         })
@@ -82,7 +84,7 @@ internal fun OneTimeTransactionForm(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Checkbox(checked = isPaid, onCheckedChange = { isPaid = it })
-            Text("Paid", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.form_paid), style = MaterialTheme.typography.bodyMedium)
         }
         ExposedDropdownMenuBox(
             expanded = categoryExpanded,
@@ -92,7 +94,7 @@ internal fun OneTimeTransactionForm(
                 value = selectedCategory?.name ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Category") },
+                label = { Text(stringResource(R.string.form_category)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
@@ -107,18 +109,18 @@ internal fun OneTimeTransactionForm(
             onExpandedChange = { accountExpanded = !accountExpanded }
         ) {
             OutlinedTextField(
-                value = selectedAccount?.let { "${it.name} (${it.type})" } ?: "",
+                value = selectedAccount?.let { accountWithType(it.name, it.type) } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Account (optional)") },
+                label = { Text(stringResource(R.string.form_account_optional)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
-                DropdownMenuItem(text = { Text("None") }, onClick = { selectedAccount = null; accountExpanded = false })
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_none)) }, onClick = { selectedAccount = null; accountExpanded = false })
                 accounts.forEach { acc ->
                     DropdownMenuItem(
-                        text = { Text("${acc.name} (${acc.type})") },
+                        text = { Text(accountWithType(acc.name, acc.type)) },
                         onClick = { selectedAccount = acc; accountExpanded = false }
                     )
                 }
@@ -143,7 +145,7 @@ internal fun OneTimeTransactionForm(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(saveLabel ?: if (isExpense) "Save Expense" else "Save Income")
+            Text(saveLabel ?: stringResource(if (isExpense) R.string.save_expense else R.string.save_income))
         }
     }
 }

@@ -24,7 +24,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
+import com.iltermon.expenselens.R
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -71,7 +73,7 @@ fun SwipeToRevealRow(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null)
-                        Text("Delete", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.action_delete), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

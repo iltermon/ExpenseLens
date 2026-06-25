@@ -15,3 +15,6 @@
 local.properties
 # User financial data — must never be committed (one-time Excel import source)
 *.xlsx
+*.apk
+*.dm
+/app/release/output-metadata.json

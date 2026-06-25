@@ -32,8 +32,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.RecurringTemplate
@@ -89,13 +91,13 @@ internal fun RecurringForm(
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Description") },
+            label = { Text(stringResource(R.string.form_description)) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = amount,
             onValueChange = { amount = it },
-            label = { Text("Amount (€)") },
+            label = { Text(stringResource(R.string.form_amount, LocalCurrencySymbol.current)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
         )
@@ -107,7 +109,7 @@ internal fun RecurringForm(
                 value = selectedCategory?.name ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Category") },
+                label = { Text(stringResource(R.string.form_category)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
@@ -122,25 +124,25 @@ internal fun RecurringForm(
             onExpandedChange = { accountExpanded = !accountExpanded }
         ) {
             OutlinedTextField(
-                value = selectedAccount?.let { "${it.name} (${it.type})" } ?: "",
+                value = selectedAccount?.let { accountWithType(it.name, it.type) } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Account (optional)") },
+                label = { Text(stringResource(R.string.form_account_optional)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
-                DropdownMenuItem(text = { Text("None") }, onClick = { selectedAccount = null; accountExpanded = false })
+                DropdownMenuItem(text = { Text(stringResource(R.string.action_none)) }, onClick = { selectedAccount = null; accountExpanded = false })
                 accounts.forEach { acc ->
                     DropdownMenuItem(
-                        text = { Text("${acc.name} (${acc.type})") },
+                        text = { Text(accountWithType(acc.name, acc.type)) },
                         onClick = { selectedAccount = acc; accountExpanded = false }
                     )
                 }
             }
         }
         Text(
-            text = "Recurrence",
+            text = stringResource(R.string.form_recurrence),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -148,7 +150,7 @@ internal fun RecurringForm(
             OutlinedTextField(
                 value = frequencyInterval,
                 onValueChange = { if (it.length <= 3) frequencyInterval = it.filter { c -> c.isDigit() } },
-                label = { Text("Frequency") },
+                label = { Text(stringResource(R.string.form_frequency)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.width(100.dp)
             )
@@ -158,34 +160,34 @@ internal fun RecurringForm(
                 modifier = Modifier.weight(1f)
             ) {
                 OutlinedTextField(
-                    value = frequencyUnit,
+                    value = frequencyUnitLabel(frequencyUnit),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Unit") },
+                    label = { Text(stringResource(R.string.form_unit)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
                     modifier = Modifier.menuAnchor().fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                     frequencyUnits.forEach { unit ->
-                        DropdownMenuItem(text = { Text(unit) }, onClick = { frequencyUnit = unit; unitExpanded = false })
+                        DropdownMenuItem(text = { Text(frequencyUnitLabel(unit)) }, onClick = { frequencyUnit = unit; unitExpanded = false })
                     }
                 }
             }
         }
 
-        DatePickerField(label = "Start date", value = startDate, onValueChange = { startDate = it })
+        DatePickerField(label = stringResource(R.string.form_start_date), value = startDate, onValueChange = { startDate = it })
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Fixed end date", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.form_fixed_end_date), style = MaterialTheme.typography.bodyMedium)
             Switch(checked = isFinite, onCheckedChange = { isFinite = it })
         }
 
         if (isFinite) {
-            DatePickerField(label = "End date", value = endDate, onValueChange = { endDate = it })
+            DatePickerField(label = stringResource(R.string.form_end_date), value = endDate, onValueChange = { endDate = it })
         }
 
         Row(
@@ -193,7 +195,7 @@ internal fun RecurringForm(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Auto payment", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.form_auto_payment), style = MaterialTheme.typography.bodyMedium)
             Switch(checked = autoPayment, onCheckedChange = { autoPayment = it })
         }
 
@@ -219,7 +221,7 @@ internal fun RecurringForm(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(saveLabel ?: if (isExpense) "Save Recurring Expense" else "Save Recurring Income")
+            Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
         }
     }
 }
@@ -252,10 +254,10 @@ internal fun DatePickerField(label: String, value: LocalDate, onValueChange: (Lo
                         onValueChange(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
                     }
                     showDialog = false
-                }) { Text("OK") }
+                }) { Text(stringResource(R.string.action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

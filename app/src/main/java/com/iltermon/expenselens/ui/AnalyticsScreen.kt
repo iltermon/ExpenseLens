@@ -33,8 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 import java.time.format.DateTimeFormatter
 
 /**
@@ -92,12 +94,12 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
     }.sortedByDescending { it.net }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Analytics") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_analytics)) }) },
         bottomBar = {
             SummaryBar(
-                leftLabel = "Total Expenses",
+                leftLabel = stringResource(R.string.analytics_total_expenses),
                 leftAmount = totalExpenses,
-                rightLabel = "Total Income",
+                rightLabel = stringResource(R.string.analytics_total_income),
                 rightAmount = totalIncome,
                 rightIsNegative = false,
                 leftRecurring = recurringExpenses,
@@ -129,8 +131,8 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
                 recurringIncome = recurringIncome
             )
 
-            SpendingCard(title = "Spending by category", rows = categoryRows, showRecurring = false)
-            SpendingCard(title = "Spending by account", rows = accountRows, showRecurring = true)
+            SpendingCard(title = stringResource(R.string.analytics_spending_by_category), rows = categoryRows, showRecurring = false)
+            SpendingCard(title = stringResource(R.string.analytics_spending_by_account), rows = accountRows, showRecurring = true)
 
             GraphPlaceholderCard()
         }
@@ -152,12 +154,12 @@ private fun PeriodHeader(
                 selected = isMonth,
                 onClick = { onModeChange(AnalyticsPeriod.MONTH) },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) { Text("Month") }
+            ) { Text(stringResource(R.string.analytics_period_month)) }
             SegmentedButton(
                 selected = !isMonth,
                 onClick = { onModeChange(AnalyticsPeriod.YEAR) },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) { Text("Year") }
+            ) { Text(stringResource(R.string.analytics_period_year)) }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -167,7 +169,7 @@ private fun PeriodHeader(
             OutlinedButton(onClick = onPrevious, shape = RoundedCornerShape(50)) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Previous",
+                    contentDescription = stringResource(R.string.cd_previous),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -175,7 +177,7 @@ private fun PeriodHeader(
             OutlinedButton(onClick = onNext, shape = RoundedCornerShape(50)) {
                 Icon(
                     Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Next",
+                    contentDescription = stringResource(R.string.cd_next),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -201,17 +203,17 @@ private fun SummaryCards(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Net", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.analytics_net), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "€${"%.2f".format(net)}",
+                    money(net),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (net > 0) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.primary
                 )
             }
-            AmountRow("Expenses", totalExpenses, recurringExpenses)
-            AmountRow("Income", totalIncome, recurringIncome)
+            AmountRow(stringResource(R.string.analytics_expenses), totalExpenses, recurringExpenses)
+            AmountRow(stringResource(R.string.analytics_income), totalIncome, recurringIncome)
         }
     }
 }
@@ -225,9 +227,9 @@ private fun AmountRow(label: String, amount: Double, recurring: Double) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Column(horizontalAlignment = Alignment.End) {
-            Text("€${"%.2f".format(amount)}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text(money(amount), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
             Text(
-                "↻ €${"%.2f".format(recurring)} recurring",
+                stringResource(R.string.recurring_caption, money(recurring)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -243,9 +245,7 @@ private data class SpendRow(
     val limit: Double?
 )
 
-private val StatusGreen = Color(0xFF2E7D32)
-private val StatusYellow = Color(0xFFF9A825)
-private val StatusOrange = Color(0xFFEF6C00)
+
 
 @Composable
 private fun SpendingCard(title: String, rows: List<SpendRow>, showRecurring: Boolean) {
@@ -258,7 +258,7 @@ private fun SpendingCard(title: String, rows: List<SpendRow>, showRecurring: Boo
 
             if (rows.isEmpty()) {
                 Text(
-                    "No spending in this period.",
+                    stringResource(R.string.analytics_no_spending),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -281,13 +281,13 @@ private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {
             Text(row.name, style = MaterialTheme.typography.bodyMedium)
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "€${"%.2f".format(row.net)}",
+                    money(row.net),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
                 if (showRecurring && row.recurring != null && row.recurring != 0.0) {
                     Text(
-                        "↻ €${"%.2f".format(row.recurring)}",
+                        stringResource(R.string.analytics_recurring_short, money(row.recurring)),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -313,7 +313,7 @@ private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {
             ) {
 
                 Text(
-                    "limit €${"%.2f".format(limit)}",
+                    stringResource(R.string.analytics_limit, money(limit)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -327,7 +327,7 @@ private fun GraphPlaceholderCard() {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                "Spending over time",
+                stringResource(R.string.analytics_spending_over_time),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -339,7 +339,7 @@ private fun GraphPlaceholderCard() {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "Graph coming soon",
+                    stringResource(R.string.analytics_graph_coming_soon),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

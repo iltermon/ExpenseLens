@@ -8,7 +8,6 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -17,6 +16,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.iltermon.expenselens.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,10 +34,8 @@ fun AddExpenseScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Expense") },
-                navigationIcon = {
-                    TextButton(onClick = onNavigateBack) { Text("Back") }
-                }
+                title = { Text(stringResource(R.string.add_expense_title)) },
+                navigationIcon = { BackButton(onClick = onNavigateBack) }
             )
         }
     ) { padding ->
@@ -46,8 +45,8 @@ fun AddExpenseScreen(
                 .padding(padding)
         ) {
             PrimaryTabRow(selectedTabIndex = selectedTab) {
-                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("One-time") })
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Recurring") })
+                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(stringResource(R.string.tab_one_time)) })
+                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(stringResource(R.string.tab_recurring)) })
             }
 
             if (selectedTab == 0) {

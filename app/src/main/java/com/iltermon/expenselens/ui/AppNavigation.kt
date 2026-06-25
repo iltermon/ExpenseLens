@@ -1,5 +1,6 @@
 package com.iltermon.expenselens.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
+import com.iltermon.expenselens.R
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -48,21 +51,22 @@ object Routes {
 
 private data class BottomNavItem(
     val route: String,
-    val label: String,
+    @StringRes val label: Int,
     val icon: ImageVector
 )
 
 private val bottomNavItems = listOf(
-    BottomNavItem(Routes.EXPENSES, "Expenses", Icons.Filled.Receipt),
-    BottomNavItem(Routes.ANALYTICS, "Analytics", Icons.Filled.BarChart),
-    BottomNavItem(Routes.INCOME, "Income", Icons.Filled.Payments),
-    BottomNavItem(Routes.SETTINGS, "Settings", Icons.Filled.Settings),
+    BottomNavItem(Routes.EXPENSES, R.string.nav_expenses, Icons.Filled.Receipt),
+    BottomNavItem(Routes.ANALYTICS, R.string.nav_analytics, Icons.Filled.BarChart),
+    BottomNavItem(Routes.INCOME, R.string.nav_income, Icons.Filled.Payments),
+    BottomNavItem(Routes.SETTINGS, R.string.nav_settings, Icons.Filled.Settings),
 )
 
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
-    viewModel: ExpenseLensViewModel
+    viewModel: ExpenseLensViewModel,
+    onChangeLanguage: (String) -> Unit
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
@@ -86,8 +90,8 @@ fun AppNavigation(
                                     restoreState = true
                                 }
                             },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) }
+                            icon = { Icon(item.icon, contentDescription = stringResource(item.label)) },
+                            label = { Text(stringResource(item.label)) }
                         )
                     }
                 }
@@ -124,7 +128,7 @@ fun AppNavigation(
                     )
                 }
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(viewModel = viewModel)
+                    SettingsScreen(viewModel = viewModel, onChangeLanguage = onChangeLanguage)
                 }
                 composable(Routes.ADD_EXPENSE) {
                     AddExpenseScreen(
