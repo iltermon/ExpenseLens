@@ -34,11 +34,28 @@ data class ExpenseItem(
     val isPaid: Boolean,
     val isRecurring: Boolean,
     val transactionId: Int? = null,
-    val templateId: Int? = null,        // non-null only for recurring items
-    val frequencyLabel: String? = null, // non-null only for recurring items
+    val templateId: Int? = null,          // non-null only for recurring items
+    val frequencyInterval: Int? = null,   // non-null only for recurring items
+    val frequencyUnit: String? = null,    // non-null only for recurring items
     val accountId: Int? = null
 )
 data class DateRange(val start: LocalDate, val end: LocalDate)
+
+/** Outcome of an import/clear, kept structured so the UI can localize the message. */
+sealed interface ImportStatus {
+    data object Importing : ImportStatus
+    data class Imported(
+        val expenses: Int,
+        val income: Int,
+        val templates: Int,
+        val accounts: Int,
+        val categories: Int
+    ) : ImportStatus
+    data class ImportFailed(val message: String?) : ImportStatus
+    data object Clearing : ImportStatus
+    data object Cleared : ImportStatus
+    data class ClearFailed(val message: String?) : ImportStatus
+}
 
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
 
@@ -128,6 +145,16 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
+    // User-selected currency symbol (display only — transactions are single-currency). Persisted in
+    // the app_settings key/value table so it survives restarts and is independent of the language.
+    val currencySymbol: StateFlow<String> = repository.observeSetting(KEY_CURRENCY_SYMBOL)
+        .map { it ?: DEFAULT_CURRENCY_SYMBOL }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), DEFAULT_CURRENCY_SYMBOL)
+
+    fun setCurrencySymbol(symbol: String) {
+        viewModelScope.launch { repository.putSetting(KEY_CURRENCY_SYMBOL, symbol) }
+    }
+
     // True while a slow write (delete/clear) runs, so the UI can show a blocking overlay.
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
@@ -167,19 +194,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
 
         val recurringItems = templates.flatMap { template ->
-            val interval = template.frequencyInterval
-            val unit = template.frequencyUnit
-            val label = if (interval == 1) {
-                when (unit) {
-                    "Day" -> "Daily"
-                    "Week" -> "Weekly"
-                    "Month" -> "Monthly"
-                    "Year" -> "Yearly"
-                    else -> unit
-                }
-            } else {
-                "Every $interval ${unit}s"
-            }
             template.occurrencesInRange(range.start, range.end)
                 // hide an occurrence that's already been recorded as a transaction
                 .filter { date ->
@@ -197,7 +211,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         isRecurring = true,
                         transactionId = null,
                         templateId = template.id,
-                        frequencyLabel = label,
+                        frequencyInterval = template.frequencyInterval,
+                        frequencyUnit = template.frequencyUnit,
                         accountId = template.accountId
                     )
                 }
@@ -311,9 +326,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.updateTemplate(template) }
     }
 
-    /** Deletes a recurring series. When [deleteHistory] is true, also removes every transaction
-     *  ever generated from it; otherwise past recorded payments are kept as standalone rows. */
-    /** Deletes a recurring series and all its generated transactions (delete = fix a mistake). */
     fun deleteTemplate(template: RecurringTemplate) {
         launchBusy { repository.deleteSeries(template) }
     }
@@ -339,12 +351,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
 
     // Dev-only: one-time import of the user's ExpenseLens.xlsx (Settings → Developer Options).
-    private val _importStatus = MutableStateFlow<String?>(null)
-    val importStatus: StateFlow<String?> = _importStatus.asStateFlow()
+    private val _importStatus = MutableStateFlow<ImportStatus?>(null)
+    val importStatus: StateFlow<ImportStatus?> = _importStatus.asStateFlow()
 
     fun importFromUri(context: Context, uri: Uri) {
         viewModelScope.launch {
-            _importStatus.value = "Importing…"
+            _importStatus.value = ImportStatus.Importing
             try {
                 // Run the whole pipeline off the main thread: clearAll() (RoomDatabase.clearAllTables)
                 // is a blocking call and would otherwise crash with "cannot access database on the
@@ -353,23 +365,27 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                     val sheets = XlsxReader.read(context, uri)
                     DataImporter.import(repository, sheets)
                 }
-                _importStatus.value =
-                    "Imported ${r.expenses} expenses, ${r.income} income, ${r.templates} recurring, " +
-                        "${r.accounts} accounts, ${r.categories} categories."
+                _importStatus.value = ImportStatus.Imported(
+                    expenses = r.expenses,
+                    income = r.income,
+                    templates = r.templates,
+                    accounts = r.accounts,
+                    categories = r.categories
+                )
             } catch (e: Exception) {
-                _importStatus.value = "Import failed: ${e.message}"
+                _importStatus.value = ImportStatus.ImportFailed(e.message)
             }
         }
     }
 
     fun clearTransactions() {
         launchBusy {
-            _importStatus.value = "Clearing…"
+            _importStatus.value = ImportStatus.Clearing
             try {
                 repository.clearTransactionsAndTemplates()
-                _importStatus.value = "Transactions and recurring templates cleared."
+                _importStatus.value = ImportStatus.Cleared
             } catch (e: Exception) {
-                _importStatus.value = "Clear failed: ${e.message}"
+                _importStatus.value = ImportStatus.ClearFailed(e.message)
             }
         }
     }
@@ -401,6 +417,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
     companion object {
         private const val SUBSCRIBE_TIMEOUT_MS = 5000L
+        const val KEY_CURRENCY_SYMBOL = "currency_symbol"
+        const val DEFAULT_CURRENCY_SYMBOL = "€"
 
         fun factory(repository: ExpenseLensRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

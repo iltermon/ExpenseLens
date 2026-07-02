@@ -28,6 +28,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // The "real" app you carry. Signed with the debug keystore so `installRelease`
+            // works for personal sideloading without managing a separate keystore.
+            // Replace with a proper release keystore before any Play Store distribution.
+            signingConfig = signingConfigs.getByName("debug")
+            manifestPlaceholders["appLabel"] = "ExpenseLens"
+        }
+        debug {
+            // Separate app id => its own data sandbox and launcher icon, so the
+            // constantly-rebuilt dev app never touches the real app's data.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            manifestPlaceholders["appLabel"] = "ExpenseLens Debug"
         }
     }
     compileOptions {
@@ -36,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -47,6 +60,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.compose.material.icons.extended)
     testImplementation(libs.junit)

@@ -1,3 +1,178 @@
 <resources>
     <string name="app_name">ExpenseLens</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_update">Update</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_ok">OK</string>
+    <string name="action_none">None</string>
+
+    <!-- Bottom navigation / screen titles -->
+    <string name="nav_expenses">Expenses</string>
+    <string name="nav_analytics">Analytics</string>
+    <string name="nav_income">Income</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Tab navigation -->
+    <string name="cd_previous">Previous</string>
+    <string name="cd_next">Next</string>
+
+    <!-- Add / Edit screens -->
+    <string name="add_expense_title">Add Expense</string>
+    <string name="add_income_title">Add Income</string>
+    <string name="edit_transaction_title">Edit Transaction</string>
+    <string name="edit_recurring_title">Edit Recurring</string>
+    <string name="tab_one_time">One-time</string>
+    <string name="tab_recurring">Recurring</string>
+
+    <!-- Transaction form -->
+    <string name="form_description">Description</string>
+    <!-- %1$s is the active currency symbol -->
+    <string name="form_amount">Amount (%1$s)</string>
+    <string name="form_category">Category</string>
+    <string name="form_account_optional">Account (optional)</string>
+    <string name="form_date">Date</string>
+    <string name="form_paid">Paid</string>
+    <string name="form_recurrence">Recurrence</string>
+    <string name="form_frequency">Frequency</string>
+    <string name="form_unit">Unit</string>
+    <string name="form_start_date">Start date</string>
+    <string name="form_end_date">End date</string>
+    <string name="form_fixed_end_date">Fixed end date</string>
+    <string name="form_auto_payment">Auto payment</string>
+    <string name="save_expense">Save Expense</string>
+    <string name="save_income">Save Income</string>
+    <string name="save_recurring_expense">Save Recurring Expense</string>
+    <string name="save_recurring_income">Save Recurring Income</string>
+    <!-- "Account Name (Type)" shown in account pickers -->
+    <string name="account_with_type">%1$s (%2$s)</string>
+
+    <!-- Frequency units (singular, used in the Unit dropdown) -->
+    <string name="unit_day">Day</string>
+    <string name="unit_week">Week</string>
+    <string name="unit_month">Month</string>
+    <string name="unit_year">Year</string>
+
+    <!-- Recurrence labels shown on list rows -->
+    <string name="freq_daily">Daily</string>
+    <string name="freq_weekly">Weekly</string>
+    <string name="freq_monthly">Monthly</string>
+    <string name="freq_yearly">Yearly</string>
+    <!-- e.g. "Every 2 Months" -->
+    <string name="freq_every">Every %1$d %2$s</string>
+    <string name="unit_plural_day">Days</string>
+    <string name="unit_plural_week">Weeks</string>
+    <string name="unit_plural_month">Months</string>
+    <string name="unit_plural_year">Years</string>
+    <!-- ↻ prefix for the recurrence label on a row -->
+    <string name="recurring_frequency_prefix">↻ %1$s</string>
+
+    <!-- Expenses tab -->
+    <string name="expenses_this_month">This Month Expenses</string>
+    <string name="expenses_remaining_payment">Remaining Payment</string>
+    <string name="section_recurring">Recurring</string>
+    <string name="section_to_be_paid">To be paid</string>
+    <string name="section_paid">Paid</string>
+    <string name="no_expenses_for_period">No expenses for this period.</string>
+
+    <!-- Income tab -->
+    <string name="income_this_month">This Month Income</string>
+    <string name="income_pending">Pending Income</string>
+    <string name="section_pending">Pending</string>
+    <string name="section_received">Received</string>
+    <string name="no_income_for_period">No income for this period.</string>
+
+    <!-- Amount / summary captions (%1$s is an already-formatted amount with currency symbol) -->
+    <string name="recurring_caption">↻ %1$s recurring</string>
+
+    <!-- Analytics -->
+    <string name="analytics_total_expenses">Total Expenses</string>
+    <string name="analytics_total_income">Total Income</string>
+    <string name="analytics_period_month">Month</string>
+    <string name="analytics_period_year">Year</string>
+    <string name="analytics_net">Net</string>
+    <string name="analytics_expenses">Expenses</string>
+    <string name="analytics_income">Income</string>
+    <string name="analytics_spending_by_category">Spending by category</string>
+    <string name="analytics_spending_by_account">Spending by account</string>
+    <string name="analytics_no_spending">No spending in this period.</string>
+    <string name="analytics_limit">limit %1$s</string>
+    <string name="analytics_recurring_short">↻ %1$s</string>
+    <string name="analytics_spending_over_time">Spending over time</string>
+    <string name="analytics_graph_coming_soon">Graph coming soon</string>
+
+    <!-- Settings -->
+    <string name="settings_accounts">Accounts</string>
+    <string name="settings_categories">Categories</string>
+    <string name="settings_advanced">Advanced settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_currency">Currency</string>
+    <string name="settings_import_excel">Import from Excel (.xlsx)</string>
+    <string name="settings_clear_transactions">Clear Transactions</string>
+    <string name="settings_clear_dialog_title">Clear transactions?</string>
+    <string name="settings_clear_dialog_message">This permanently removes all transactions and recurring templates. Accounts, categories and settings are kept. This cannot be undone.</string>
+    <string name="cd_add_section">Add %1$s</string>
+    <string name="cd_set_account_limit">Set account limit</string>
+    <string name="cd_delete_account">Delete account</string>
+    <string name="cd_set_category_limit">Set category limit</string>
+    <string name="cd_delete_category">Delete category</string>
+
+    <!-- Language options -->
+    <string name="language_english">English</string>
+    <string name="language_turkish">Türkçe</string>
+
+    <!-- Currency options (symbol is display only; not tied to language) -->
+    <string name="currency_euro">Euro (€)</string>
+    <string name="currency_lira">Turkish Lira (₺)</string>
+    <string name="currency_dollar">US Dollar ($)</string>
+
+    <!-- Category type filter -->
+    <string name="category_type_both">Both</string>
+    <string name="category_type_expense_only">Expense only</string>
+    <string name="category_type_income_only">Income only</string>
+
+    <!-- Account types -->
+    <string name="account_type_debit">Debit</string>
+    <string name="account_type_credit_card">Credit Card</string>
+    <string name="account_type_investment">Investment</string>
+    <string name="account_type_cash">Cash</string>
+    <string name="account_type_savings">Savings</string>
+
+    <!-- Limits -->
+    <string name="limit_subtitle">Limit %1$s</string>
+    <!-- %1$s is an already-formatted amount with currency symbol -->
+    <string name="limit_per_month">%1$s/mo</string>
+    <string name="limit_per_year">%1$s/yr</string>
+    <string name="limit_separator"> · </string>
+    <string name="limit_dialog_title">%1$s limit</string>
+    <string name="limit_monthly_field">Monthly limit (%1$s)</string>
+    <string name="limit_yearly_field">Yearly limit (%1$s)</string>
+    <string name="limit_hint">Leave a field empty to remove that limit. Limits use net (expenses − income).</string>
+
+    <!-- Account / category dialogs -->
+    <string name="account_add_title">Add Account</string>
+    <string name="account_name_field">Account Name</string>
+    <string name="field_type">Type</string>
+    <string name="category_add_title">Add Category</string>
+    <string name="category_name_field">Category Name</string>
+    <string name="category_appears_in">Appears in</string>
+
+    <!-- Delete dialogs (list rows) -->
+    <string name="delete_recurring_title">Delete recurring \"%1$s\"?</string>
+    <string name="delete_recurring_message">Removes the recurring payment and every entry it created. To stop it going forward instead, edit it and set an end date.</string>
+    <string name="delete_transaction_title">Delete transaction?</string>
+    <string name="delete_transaction_message">\"%1$s\" will be permanently removed.</string>
+
+    <!-- Import / clear status -->
+    <string name="import_importing">Importing…</string>
+    <string name="import_done">Imported %1$d expenses, %2$d income, %3$d recurring, %4$d accounts, %5$d categories.</string>
+    <string name="import_failed">Import failed: %1$s</string>
+    <string name="clear_clearing">Clearing…</string>
+    <string name="clear_done">Transactions and recurring templates cleared.</string>
+    <string name="clear_failed">Clear failed: %1$s</string>
 </resources>

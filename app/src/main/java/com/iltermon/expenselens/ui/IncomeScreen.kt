@@ -15,7 +15,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 
 @Composable
 fun IncomeScreen(
@@ -33,12 +35,12 @@ fun IncomeScreen(
     val receivedItems = items.filter { it.isPaid }
 
     TabScreenShell(
-        title = "Income",
+        title = stringResource(R.string.nav_income),
         viewModel = viewModel,
         onAdd = onAddIncome,
-        leftLabel = "This Month Income",
+        leftLabel = stringResource(R.string.income_this_month),
         leftAmount = items.sumOf { it.amount },
-        rightLabel = "Pending Income",
+        rightLabel = stringResource(R.string.income_pending),
         rightAmount = (recurringItems + pendingItems).sumOf { it.amount },
         rightIsNegative = false,
         leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
@@ -49,7 +51,7 @@ fun IncomeScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (recurringItems.isNotEmpty()) {
-                item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
+                item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
@@ -58,7 +60,7 @@ fun IncomeScreen(
             if (pendingItems.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = "Pending", total = pendingItems.sumOf { it.amount })
+                    SectionHeader(title = stringResource(R.string.section_pending), total = pendingItems.sumOf { it.amount })
                 }
                 items(pendingItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
@@ -68,7 +70,7 @@ fun IncomeScreen(
             if (receivedItems.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = "Received", total = receivedItems.sumOf { it.amount })
+                    SectionHeader(title = stringResource(R.string.section_received), total = receivedItems.sumOf { it.amount })
                 }
                 items(receivedItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
@@ -83,7 +85,7 @@ fun IncomeScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No income for this period.")
+                        Text(stringResource(R.string.no_income_for_period))
                     }
                 }
             }

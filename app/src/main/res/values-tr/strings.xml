@@ -1,0 +1,177 @@
+<resources>
+    <string name="app_name">ExpenseLens</string>
+
+    <!-- Common actions -->
+    <string name="action_back">Geri</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_update">Güncelle</string>
+    <string name="action_delete">Sil</string>
+    <string name="action_cancel">İptal</string>
+    <string name="action_add">Ekle</string>
+    <string name="action_clear">Temizle</string>
+    <string name="action_ok">Tamam</string>
+    <string name="action_none">Yok</string>
+
+    <!-- Bottom navigation / screen titles -->
+    <string name="nav_expenses">Giderler</string>
+    <string name="nav_analytics">Analiz</string>
+    <string name="nav_income">Gelir</string>
+    <string name="nav_settings">Ayarlar</string>
+
+    <!-- Tab navigation -->
+    <string name="cd_previous">Önceki</string>
+    <string name="cd_next">Sonraki</string>
+
+    <!-- Add / Edit screens -->
+    <string name="add_expense_title">Gider Ekle</string>
+    <string name="add_income_title">Gelir Ekle</string>
+    <string name="edit_transaction_title">İşlemi Düzenle</string>
+    <string name="edit_recurring_title">Tekrarlayanı Düzenle</string>
+    <string name="tab_one_time">Tek seferlik</string>
+    <string name="tab_recurring">Tekrarlayan</string>
+
+    <!-- Transaction form -->
+    <string name="form_description">Açıklama</string>
+    <!-- %1$s aktif para birimi simgesidir -->
+    <string name="form_amount">Tutar (%1$s)</string>
+    <string name="form_category">Kategori</string>
+    <string name="form_account_optional">Hesap (isteğe bağlı)</string>
+    <string name="form_date">Tarih</string>
+    <string name="form_paid">Ödendi</string>
+    <string name="form_recurrence">Tekrarlama</string>
+    <string name="form_frequency">Sıklık</string>
+    <string name="form_unit">Birim</string>
+    <string name="form_start_date">Başlangıç tarihi</string>
+    <string name="form_end_date">Bitiş tarihi</string>
+    <string name="form_fixed_end_date">Sabit bitiş tarihi</string>
+    <string name="form_auto_payment">Otomatik ödeme</string>
+    <string name="save_expense">Gideri Kaydet</string>
+    <string name="save_income">Geliri Kaydet</string>
+    <string name="save_recurring_expense">Tekrarlayan Gideri Kaydet</string>
+    <string name="save_recurring_income">Tekrarlayan Geliri Kaydet</string>
+    <!-- "Hesap Adı (Tür)" hesap seçicilerinde gösterilir -->
+    <string name="account_with_type">%1$s (%2$s)</string>
+
+    <!-- Frequency units (singular, used in the Unit dropdown) -->
+    <string name="unit_day">Gün</string>
+    <string name="unit_week">Hafta</string>
+    <string name="unit_month">Ay</string>
+    <string name="unit_year">Yıl</string>
+
+    <!-- Recurrence labels shown on list rows -->
+    <string name="freq_daily">Günlük</string>
+    <string name="freq_weekly">Haftalık</string>
+    <string name="freq_monthly">Aylık</string>
+    <string name="freq_yearly">Yıllık</string>
+    <!-- ör. "Her 2 ay" -->
+    <string name="freq_every">Her %1$d %2$s</string>
+    <string name="unit_plural_day">gün</string>
+    <string name="unit_plural_week">hafta</string>
+    <string name="unit_plural_month">ay</string>
+    <string name="unit_plural_year">yıl</string>
+    <!-- Satırdaki tekrar etiketi için ↻ öneki -->
+    <string name="recurring_frequency_prefix">↻ %1$s</string>
+
+    <!-- Expenses tab -->
+    <string name="expenses_this_month">Bu Ayki Giderler</string>
+    <string name="expenses_remaining_payment">Kalan Ödeme</string>
+    <string name="section_recurring">Tekrarlayan</string>
+    <string name="section_to_be_paid">Ödenecek</string>
+    <string name="section_paid">Ödenen</string>
+    <string name="no_expenses_for_period">Bu dönem için gider yok.</string>
+
+    <!-- Income tab -->
+    <string name="income_this_month">Bu Ayki Gelir</string>
+    <string name="income_pending">Bekleyen Gelir</string>
+    <string name="section_pending">Bekleyen</string>
+    <string name="section_received">Alınan</string>
+    <string name="no_income_for_period">Bu dönem için gelir yok.</string>
+
+    <!-- Amount / summary captions -->
+    <string name="recurring_caption">↻ %1$s tekrarlayan</string>
+
+    <!-- Analytics -->
+    <string name="analytics_total_expenses">Toplam Gider</string>
+    <string name="analytics_total_income">Toplam Gelir</string>
+    <string name="analytics_period_month">Ay</string>
+    <string name="analytics_period_year">Yıl</string>
+    <string name="analytics_net">Net</string>
+    <string name="analytics_expenses">Giderler</string>
+    <string name="analytics_income">Gelir</string>
+    <string name="analytics_spending_by_category">Kategoriye göre harcama</string>
+    <string name="analytics_spending_by_account">Hesaba göre harcama</string>
+    <string name="analytics_no_spending">Bu dönemde harcama yok.</string>
+    <string name="analytics_limit">limit %1$s</string>
+    <string name="analytics_recurring_short">↻ %1$s</string>
+    <string name="analytics_spending_over_time">Zaman içinde harcama</string>
+    <string name="analytics_graph_coming_soon">Grafik yakında</string>
+
+    <!-- Settings -->
+    <string name="settings_accounts">Hesaplar</string>
+    <string name="settings_categories">Kategoriler</string>
+    <string name="settings_advanced">Gelişmiş ayarlar</string>
+    <string name="settings_language">Dil</string>
+    <string name="settings_currency">Para Birimi</string>
+    <string name="settings_import_excel">Excel\'den içe aktar (.xlsx)</string>
+    <string name="settings_clear_transactions">İşlemleri Temizle</string>
+    <string name="settings_clear_dialog_title">İşlemler temizlensin mi?</string>
+    <string name="settings_clear_dialog_message">Bu, tüm işlemleri ve tekrarlayan şablonları kalıcı olarak siler. Hesaplar, kategoriler ve ayarlar korunur. Bu işlem geri alınamaz.</string>
+    <string name="cd_add_section">%1$s ekle</string>
+    <string name="cd_set_account_limit">Hesap limiti belirle</string>
+    <string name="cd_delete_account">Hesabı sil</string>
+    <string name="cd_set_category_limit">Kategori limiti belirle</string>
+    <string name="cd_delete_category">Kategoriyi sil</string>
+
+    <!-- Language options -->
+    <string name="language_english">English</string>
+    <string name="language_turkish">Türkçe</string>
+
+    <!-- Currency options (simge yalnızca görünümdür; dile bağlı değildir) -->
+    <string name="currency_euro">Euro (€)</string>
+    <string name="currency_lira">Türk Lirası (₺)</string>
+    <string name="currency_dollar">ABD Doları ($)</string>
+
+    <!-- Category type filter -->
+    <string name="category_type_both">Her ikisi</string>
+    <string name="category_type_expense_only">Yalnızca gider</string>
+    <string name="category_type_income_only">Yalnızca gelir</string>
+
+    <!-- Account types -->
+    <string name="account_type_debit">Banka Kartı</string>
+    <string name="account_type_credit_card">Kredi Kartı</string>
+    <string name="account_type_investment">Yatırım</string>
+    <string name="account_type_cash">Nakit</string>
+    <string name="account_type_savings">Tasarruf</string>
+
+    <!-- Limits -->
+    <string name="limit_subtitle">Limit %1$s</string>
+    <string name="limit_per_month">%1$s/ay</string>
+    <string name="limit_per_year">%1$s/yıl</string>
+    <string name="limit_separator"> · </string>
+    <string name="limit_dialog_title">%1$s limiti</string>
+    <string name="limit_monthly_field">Aylık limit (%1$s)</string>
+    <string name="limit_yearly_field">Yıllık limit (%1$s)</string>
+    <string name="limit_hint">Bir alanı boş bırakarak o limiti kaldırın. Limitler net değeri kullanır (giderler − gelirler).</string>
+
+    <!-- Account / category dialogs -->
+    <string name="account_add_title">Hesap Ekle</string>
+    <string name="account_name_field">Hesap Adı</string>
+    <string name="field_type">Tür</string>
+    <string name="category_add_title">Kategori Ekle</string>
+    <string name="category_name_field">Kategori Adı</string>
+    <string name="category_appears_in">Şurada görünür</string>
+
+    <!-- Delete dialogs (list rows) -->
+    <string name="delete_recurring_title">\"%1$s\" tekrarlayan kaydı silinsin mi?</string>
+    <string name="delete_recurring_message">Tekrarlayan ödemeyi ve oluşturduğu tüm kayıtları siler. Bunun yerine ileriye dönük durdurmak için düzenleyip bir bitiş tarihi belirleyin.</string>
+    <string name="delete_transaction_title">İşlem silinsin mi?</string>
+    <string name="delete_transaction_message">\"%1$s\" kalıcı olarak silinecek.</string>
+
+    <!-- Import / clear status -->
+    <string name="import_importing">İçe aktarılıyor…</string>
+    <string name="import_done">%1$d gider, %2$d gelir, %3$d tekrarlayan, %4$d hesap, %5$d kategori içe aktarıldı.</string>
+    <string name="import_failed">İçe aktarma başarısız: %1$s</string>
+    <string name="clear_clearing">Temizleniyor…</string>
+    <string name="clear_done">İşlemler ve tekrarlayan şablonlar temizlendi.</string>
+    <string name="clear_failed">Temizleme başarısız: %1$s</string>
+</resources>

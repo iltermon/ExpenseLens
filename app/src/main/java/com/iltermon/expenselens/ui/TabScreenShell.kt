@@ -36,8 +36,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -79,7 +81,7 @@ fun TabScreenShell(
                 actions = {
                     if (onAdd != null) {
                         IconButton(onClick = onAdd) {
-                            Icon(Icons.Default.Add, contentDescription = "Add")
+                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_add))
                         }
                     }
                 }
@@ -182,7 +184,7 @@ internal fun SummaryBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "€${"%.2f".format(leftAmount)}",
+                    money(leftAmount),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -195,7 +197,7 @@ internal fun SummaryBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "€${"%.2f".format(rightAmount)}",
+                    money(rightAmount),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (rightIsNegative) MaterialTheme.colorScheme.error
@@ -211,7 +213,7 @@ internal fun SummaryBar(
 private fun RecurringCaption(amount: Double?) {
     if (amount != null) {
         Text(
-            "↻ €${"%.2f".format(amount)} recurring",
+            stringResource(R.string.recurring_caption, money(amount)),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -237,9 +239,9 @@ fun DateRangePickerDialog(
                         LocalDate.ofEpochDay(end / 86400000)
                     )
                 }
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.action_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     ) {
         DateRangePicker(state = state, modifier = Modifier.weight(1f))
     }

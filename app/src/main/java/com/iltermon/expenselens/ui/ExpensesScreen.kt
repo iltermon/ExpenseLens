@@ -25,8 +25,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -46,12 +48,12 @@ fun ExpensesScreen(
     val paidItems = items.filter { it.isPaid }
 
     TabScreenShell(
-        title = "Expenses",
+        title = stringResource(R.string.nav_expenses),
         viewModel = viewModel,
         onAdd = onAddTransaction,
-        leftLabel = "This Month Expenses",
+        leftLabel = stringResource(R.string.expenses_this_month),
         leftAmount = items.sumOf { it.amount },
-        rightLabel = "Remaining Payment",
+        rightLabel = stringResource(R.string.expenses_remaining_payment),
         rightAmount = (recurringItems + unpaidItems).sumOf { it.amount },
         rightIsNegative = true,
         leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
@@ -62,7 +64,7 @@ fun ExpensesScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (recurringItems.isNotEmpty()) {
-                item { SectionHeader(title = "Recurring", total = recurringItems.sumOf { it.amount }) }
+                item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
                 }
@@ -71,7 +73,7 @@ fun ExpensesScreen(
             if (unpaidItems.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = "To be paid", total = unpaidItems.sumOf { it.amount })
+                    SectionHeader(title = stringResource(R.string.section_to_be_paid), total = unpaidItems.sumOf { it.amount })
                 }
                 items(unpaidItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
@@ -81,7 +83,7 @@ fun ExpensesScreen(
             if (paidItems.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = "Paid", total = paidItems.sumOf { it.amount })
+                    SectionHeader(title = stringResource(R.string.section_paid), total = paidItems.sumOf { it.amount })
                 }
                 items(paidItems) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
@@ -96,7 +98,7 @@ fun ExpensesScreen(
                             .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No expenses for this period.")
+                        Text(stringResource(R.string.no_expenses_for_period))
                     }
                 }
             }
@@ -119,7 +121,7 @@ fun SectionHeader(title: String, total: Double) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            "€${"%.2f".format(total)}",
+            money(total),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -172,9 +174,12 @@ fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit, onCl
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (item.frequencyLabel != null) {
+                if (item.frequencyUnit != null) {
                     Text(
-                        "↻ ${item.frequencyLabel}",
+                        stringResource(
+                            R.string.recurring_frequency_prefix,
+                            frequencyLabel(item.frequencyInterval ?: 1, item.frequencyUnit)
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )
@@ -183,7 +188,7 @@ fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit, onCl
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "€${"%.2f".format(item.amount)}",
+                    money(item.amount),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = if (item.isExpense) MaterialTheme.colorScheme.error
