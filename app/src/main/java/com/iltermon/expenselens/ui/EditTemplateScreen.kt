@@ -33,6 +33,7 @@ fun EditTemplateScreen(
     val expenseCategories by viewModel.expenseCategories.collectAsState()
     val incomeCategories by viewModel.incomeCategories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
 
     var original by remember { mutableStateOf<RecurringTemplate?>(null) }
     var prefilled by remember { mutableStateOf(false) }
@@ -50,6 +51,15 @@ fun EditTemplateScreen(
             shared.selectedCategory = categories.find { it.name == template.category }
             shared.selectedAccount = template.accountId?.let { id -> accounts.find { it.id == id } }
             prefilled = true
+        }
+    }
+
+    // Resolve the linked counterparty once the list is available (may load after the fields above).
+    LaunchedEffect(template, counterparties) {
+        val cp = template?.counterpartyId?.let { id -> counterparties.find { it.id == id } }
+        if (cp != null && shared.selectedCounterparty == null) {
+            shared.selectedCounterparty = cp
+            shared.counterpartyName = cp.name
         }
     }
 
@@ -81,9 +91,10 @@ fun EditTemplateScreen(
                     initialInterval = template.frequencyInterval,
                     initialUnit = template.frequencyUnit,
                     initialAutoPayment = template.autoPayment,
+                    counterparties = counterparties,
                     saveLabel = stringResource(R.string.action_update),
-                    onSave = { edited ->
-                        viewModel.updateTemplate(edited.copy(id = template.id))
+                    onSave = { edited, choice ->
+                        viewModel.updateTemplate(edited.copy(id = template.id), choice)
                         onNavigateBack()
                     }
                 )

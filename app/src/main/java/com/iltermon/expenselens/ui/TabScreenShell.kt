@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
@@ -60,6 +61,8 @@ fun TabScreenShell(
     content: @Composable () -> Unit
 ) {
     val selectedMonth by viewModel.selectedMonth.collectAsState()
+    val dateRange by viewModel.dateRange.collectAsState()
+    val isCustomRange by viewModel.isCustomRange.collectAsState()
     var showRangePicker by remember { mutableStateOf(false) }
 
     val titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
@@ -106,9 +109,12 @@ fun TabScreenShell(
         ) {
             MonthSelectorRow(
                 selectedMonth = selectedMonth,
+                dateRange = dateRange,
+                isCustomRange = isCustomRange,
                 onPrevious = { viewModel.goToPreviousMonth() },
                 onNext = { viewModel.goToNextMonth() },
-                onCurrentTapped = { showRangePicker = true }
+                onCurrentTapped = { showRangePicker = true },
+                onClearRange = { viewModel.clearDateRange() }
             )
             content()
         }
@@ -118,13 +124,17 @@ fun TabScreenShell(
 @Composable
 private fun MonthSelectorRow(
     selectedMonth: YearMonth,
+    dateRange: DateRange,
+    isCustomRange: Boolean,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
-    onCurrentTapped: () -> Unit
+    onCurrentTapped: () -> Unit,
+    onClearRange: () -> Unit
 ) {
     val prevMonth = selectedMonth.minusMonths(1)
     val nextMonth = selectedMonth.plusMonths(1)
     val titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
+    val rangeFormatter = DateTimeFormatter.ofPattern("d MMM")
 
     Row(
         modifier = Modifier
@@ -143,8 +153,24 @@ private fun MonthSelectorRow(
             Text(prevMonth.format(DateTimeFormatter.ofPattern("MMM")))
         }
 
-        Button(onClick = onCurrentTapped, shape = RoundedCornerShape(50)) {
-            Text(selectedMonth.format(titleFormatter), fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = onCurrentTapped, shape = RoundedCornerShape(50)) {
+                Text(
+                    if (isCustomRange)
+                        "${dateRange.start.format(rangeFormatter)} – ${dateRange.end.format(rangeFormatter)}"
+                    else
+                        selectedMonth.format(titleFormatter),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (isCustomRange) {
+                IconButton(onClick = onClearRange) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.action_clear)
+                    )
+                }
+            }
         }
 
         OutlinedButton(onClick = onNext, shape = RoundedCornerShape(50)) {

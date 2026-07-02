@@ -26,11 +26,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
+import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.Transaction
 import java.time.LocalDate
 
@@ -41,19 +43,33 @@ internal fun OneTimeTransactionForm(
     accounts: List<Account>,
     isExpense: Boolean,
     shared: TransactionFormState,
-    onSave: (Transaction) -> Unit,
+    onSave: (Transaction, CounterpartyChoice) -> Unit,
     initialDate: LocalDate = LocalDate.now(),
     initialIsPaid: Boolean = true,
-    saveLabel: String? = null
+    saveLabel: String? = null,
+    counterparties: List<Counterparty> = emptyList()
 ) {
     var description by shared::description
     var amount by shared::amount
     var selectedCategory by shared::selectedCategory
     var selectedAccount by shared::selectedAccount
+    var counterpartyName by shared::counterpartyName
+    var selectedCounterparty by shared::selectedCounterparty
     var categoryExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
     var date by remember { mutableStateOf(initialDate) }
     var isPaid by remember { mutableStateOf(initialIsPaid) }
+    var showErrors by remember { mutableStateOf(false) }
+    // Set (with the built transaction + matched counterparty) when a save is waiting on the
+    // "update this counterparty's defaults?" prompt.
+    var pendingPrompt by remember { mutableStateOf<Pair<Transaction, Counterparty>?>(null) }
+
+    val amountValue = amount.toDoubleOrNull()
+    val amountValid = amountValue != null && amountValue > 0
+    val descriptionValid = description.isNotBlank()
+    val categoryValid = selectedCategory != null
+    val accountValid = selectedAccount != null
+    val counterpartyValid = counterpartyName.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -62,22 +78,39 @@ internal fun OneTimeTransactionForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        CounterpartyField(
+            value = counterpartyName,
+            onValueChange = { counterpartyName = it; selectedCounterparty = null },
+            counterparties = counterparties,
+            onCounterpartySelected = { cp ->
+                selectedCounterparty = cp
+                counterpartyName = cp.name
+                cp.defaultCategory?.let { name -> selectedCategory = categories.find { it.name == name } }
+                cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
+            },
+            isError = showErrors && !counterpartyValid
+        )
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
             label = { Text(stringResource(R.string.form_description)) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            isError = showErrors && !descriptionValid,
+            supportingText = { if (showErrors && !descriptionValid) Text(stringResource(R.string.field_required)) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = amount,
-            onValueChange = { amount = it },
+            onValueChange = { amount = sanitizeAmountInput(it) },
             label = { Text(stringResource(R.string.form_amount, LocalCurrencySymbol.current)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            isError = showErrors && !amountValid,
+            supportingText = { if (showErrors && !amountValid) Text(stringResource(R.string.amount_invalid)) },
             modifier = Modifier.fillMaxWidth()
         )
         DatePickerField(label = stringResource(R.string.form_date), value = date, onValueChange = {
             date = it
-            isPaid = (it == LocalDate.now())
+            isPaid = !it.isAfter(LocalDate.now())
         })
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -96,6 +129,8 @@ internal fun OneTimeTransactionForm(
                 readOnly = true,
                 label = { Text(stringResource(R.string.form_category)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                isError = showErrors && !categoryValid,
+                supportingText = { if (showErrors && !categoryValid) Text(stringResource(R.string.field_required)) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
@@ -112,12 +147,13 @@ internal fun OneTimeTransactionForm(
                 value = selectedAccount?.let { accountWithType(it.name, it.type) } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text(stringResource(R.string.form_account_optional)) },
+                label = { Text(stringResource(R.string.form_account)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                isError = showErrors && !accountValid,
+                supportingText = { if (showErrors && !accountValid) Text(stringResource(R.string.field_required)) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_none)) }, onClick = { selectedAccount = null; accountExpanded = false })
                 accounts.forEach { acc ->
                     DropdownMenuItem(
                         text = { Text(accountWithType(acc.name, acc.type)) },
@@ -128,24 +164,36 @@ internal fun OneTimeTransactionForm(
         }
         Button(
             onClick = {
-                val parsedAmount = amount.toDoubleOrNull() ?: return@Button
-                val categoryName = selectedCategory?.name ?: return@Button
-                if (description.isBlank()) return@Button
-                onSave(
-                    Transaction(
-                        description = description,
-                        amount = parsedAmount,
-                        category = categoryName,
-                        date = date.toString(),
-                        isExpense = isExpense,
-                        isPaid = isPaid,
-                        accountId = selectedAccount?.id
-                    )
+                showErrors = true
+                if (!counterpartyValid || !descriptionValid || !amountValid || !categoryValid || !accountValid) return@Button
+                val txn = Transaction(
+                    description = description,
+                    amount = amountValue!!,
+                    category = selectedCategory!!.name,
+                    date = date.toString(),
+                    isExpense = isExpense,
+                    isPaid = isPaid,
+                    accountId = selectedAccount!!.id
                 )
+                when (val res = counterpartyChoiceFor(counterpartyName, counterparties, selectedCategory!!.name, selectedAccount!!.id)) {
+                    is CounterpartyResolution.Ready -> onSave(txn, res.choice)
+                    is CounterpartyResolution.NeedsPrompt -> pendingPrompt = txn to res.existing
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(saveLabel ?: stringResource(if (isExpense) R.string.save_expense else R.string.save_income))
         }
+    }
+
+    pendingPrompt?.let { (txn, existing) ->
+        UpdateDefaultsDialog(
+            name = existing.name,
+            onDecision = { update ->
+                onSave(txn, CounterpartyChoice.Existing(existing, updateDefaults = update))
+                pendingPrompt = null
+            },
+            onDismiss = { pendingPrompt = null }
+        )
     }
 }

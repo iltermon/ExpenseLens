@@ -14,3 +14,14 @@ val LocalCurrencySymbol = compositionLocalOf { "€" }
 @Composable
 fun money(amount: Double, decimals: Int = 2): String =
     LocalCurrencySymbol.current + "%.${decimals}f".format(amount)
+
+/** Keeps only digits and a single decimal point; a typed comma becomes a point. */
+internal fun sanitizeAmountInput(raw: String): String {
+    val sb = StringBuilder()
+    var dotSeen = false
+    for (c in raw) when {
+        c.isDigit() -> sb.append(c)
+        (c == '.' || c == ',') && !dotSeen -> { sb.append('.'); dotSeen = true }
+    }
+    return sb.toString()
+}

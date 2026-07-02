@@ -11,6 +11,8 @@
     <string name="action_clear">Temizle</string>
     <string name="action_ok">Tamam</string>
     <string name="action_none">Yok</string>
+    <string name="action_yes">Evet</string>
+    <string name="action_no">Hayır</string>
 
     <!-- Bottom navigation / screen titles -->
     <string name="nav_expenses">Giderler</string>
@@ -36,8 +38,18 @@
     <string name="form_amount">Tutar (%1$s)</string>
     <string name="form_category">Kategori</string>
     <string name="form_account_optional">Hesap (isteğe bağlı)</string>
+    <string name="form_account">Hesap</string>
+    <string name="form_counterparty">Karşı Taraf</string>
+    <!-- %1$s kullanıcının yazdığıdır -->
+    <string name="counterparty_add_new">\"%1$s\" ekle</string>
+    <string name="counterparty_did_you_mean">Bunu mu demek istediniz?</string>
+    <string name="counterparty_update_defaults_title">Varsayılanlar güncellensin mi?</string>
+    <!-- %1$s karşı taraf adıdır -->
+    <string name="counterparty_update_defaults_message">%1$s için varsayılan kategori ve hesap az önce seçtiklerinizle güncellensin mi?</string>
     <string name="form_date">Tarih</string>
     <string name="form_paid">Ödendi</string>
+    <string name="field_required">Zorunlu</string>
+    <string name="amount_invalid">0\'dan büyük bir tutar girin</string>
     <string name="form_recurrence">Tekrarlama</string>
     <string name="form_frequency">Sıklık</string>
     <string name="form_unit">Birim</string>
@@ -73,7 +85,7 @@
     <string name="recurring_frequency_prefix">↻ %1$s</string>
 
     <!-- Expenses tab -->
-    <string name="expenses_this_month">Bu Ayki Giderler</string>
+    <string name="expenses_this_month">Gider</string>
     <string name="expenses_remaining_payment">Kalan Ödeme</string>
     <string name="section_recurring">Tekrarlayan</string>
     <string name="section_to_be_paid">Ödenecek</string>
@@ -81,7 +93,7 @@
     <string name="no_expenses_for_period">Bu dönem için gider yok.</string>
 
     <!-- Income tab -->
-    <string name="income_this_month">Bu Ayki Gelir</string>
+    <string name="income_this_month">Gelir</string>
     <string name="income_pending">Bekleyen Gelir</string>
     <string name="section_pending">Bekleyen</string>
     <string name="section_received">Alınan</string>
@@ -109,6 +121,7 @@
     <!-- Settings -->
     <string name="settings_accounts">Hesaplar</string>
     <string name="settings_categories">Kategoriler</string>
+    <string name="settings_counterparties">Karşı Taraflar</string>
     <string name="settings_advanced">Gelişmiş ayarlar</string>
     <string name="settings_language">Dil</string>
     <string name="settings_currency">Para Birimi</string>
@@ -160,6 +173,15 @@
     <string name="category_add_title">Kategori Ekle</string>
     <string name="category_name_field">Kategori Adı</string>
     <string name="category_appears_in">Şurada görünür</string>
+    <string name="counterparty_add_title">Karşı Taraf Ekle</string>
+    <string name="counterparty_edit_title">Karşı Tarafı Düzenle</string>
+    <string name="counterparty_merge_title">Şununla birleştir…</string>
+    <string name="counterparty_name_field">Karşı Taraf Adı</string>
+    <string name="counterparty_default_category">Varsayılan kategori</string>
+    <string name="counterparty_default_account">Varsayılan hesap</string>
+    <string name="cd_edit_counterparty">Karşı tarafı düzenle</string>
+    <string name="cd_delete_counterparty">Karşı tarafı sil</string>
+    <string name="cd_merge_counterparty">Karşı tarafı birleştir</string>
 
     <!-- Delete dialogs (list rows) -->
     <string name="delete_recurring_title">\"%1$s\" tekrarlayan kaydı silinsin mi?</string>

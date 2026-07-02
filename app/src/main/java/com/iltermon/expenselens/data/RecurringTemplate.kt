@@ -16,5 +16,6 @@ data class RecurringTemplate(
     val frequencyInterval: Int = 1,
     val frequencyUnit: String = "Monthly",
     val autoPayment: Boolean = true,
-    val accountId: Int? = null
+    val accountId: Int? = null,
+    val counterpartyId: Int? = null
 )

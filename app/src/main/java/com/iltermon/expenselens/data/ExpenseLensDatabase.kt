@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
-    entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class, AppSetting::class],
-    version = 9,
+    entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class, AppSetting::class, Counterparty::class],
+    version = 10,
     exportSchema = false
 )
 abstract class ExpenseLensDatabase : RoomDatabase() {
@@ -18,6 +18,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun appSettingDao(): AppSettingDao
+    abstract fun counterpartyDao(): CounterpartyDao
 
     companion object {
         @Volatile
@@ -137,6 +138,23 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Additive: counterparties (store/vendor/payer) with curated defaults, plus a
+                // nullable link from transactions and templates. Start empty — no backfill.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS counterparties " +
+                        "(id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, " +
+                        "defaultCategory TEXT, defaultAccountId INTEGER)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_counterparties_name ON counterparties (name)"
+                )
+                db.execSQL("ALTER TABLE transactions ADD COLUMN counterpartyId INTEGER")
+                db.execSQL("ALTER TABLE recurring_templates ADD COLUMN counterpartyId INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): ExpenseLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -144,7 +162,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
                     ExpenseLensDatabase::class.java,
                     "expenselens_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                     .build()
                 INSTANCE = instance
                 instance

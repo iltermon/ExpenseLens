@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
+import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTemplate
 import com.iltermon.expenselens.data.Transaction
@@ -37,9 +38,19 @@ data class ExpenseItem(
     val templateId: Int? = null,          // non-null only for recurring items
     val frequencyInterval: Int? = null,   // non-null only for recurring items
     val frequencyUnit: String? = null,    // non-null only for recurring items
-    val accountId: Int? = null
+    val accountId: Int? = null,
+    val counterpartyId: Int? = null
 )
 data class DateRange(val start: LocalDate, val end: LocalDate)
+
+/**
+ * How the transaction form resolved its counterparty field at save time: either an existing
+ * counterparty (optionally re-curating its defaults) or a brand-new name to create.
+ */
+sealed interface CounterpartyChoice {
+    data class Existing(val counterparty: Counterparty, val updateDefaults: Boolean) : CounterpartyChoice
+    data class New(val name: String) : CounterpartyChoice
+}
 
 /** Outcome of an import/clear, kept structured so the UI can localize the message. */
 sealed interface ImportStatus {
@@ -97,7 +108,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                                             isExpense = template.isExpense,
                                             isPaid = true,
                                             accountId = template.accountId,
-                                            templateId = template.id
+                                            templateId = template.id,
+                                            counterpartyId = template.counterpartyId
                                         )
                                     )
                                 }
@@ -116,6 +128,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             end = YearMonth.now().atEndOfMonth()
         )
     )
+    val dateRange: StateFlow<DateRange> = _dateRange.asStateFlow()
+
+    // True when the active range is not exactly the selected month, i.e. a custom filter is applied.
+    val isCustomRange: StateFlow<Boolean> = combine(_dateRange, _selectedMonth) { r, m ->
+        r.start != m.atDay(1) || r.end != m.atEndOfMonth()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), false)
 
     val filteredTransactions: StateFlow<List<Transaction>> = combine(
         repository.getAllTransactions(),
@@ -143,6 +161,11 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    // All counterparties (store/vendor/payer), read from their own small table — cheap to query and
+    // the source for the counterparty picker's suggestions and dedupe hints.
+    val counterparties: StateFlow<List<Counterparty>> = repository.getAllCounterparties()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     // User-selected currency symbol (display only — transactions are single-currency). Persisted in
@@ -189,7 +212,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 isRecurring = false,
                 transactionId = t.id,
                 templateId = t.templateId,
-                accountId = t.accountId
+                accountId = t.accountId,
+                counterpartyId = t.counterpartyId
             )
         }
 
@@ -213,7 +237,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         templateId = template.id,
                         frequencyInterval = template.frequencyInterval,
                         frequencyUnit = template.frequencyUnit,
-                        accountId = template.accountId
+                        accountId = template.accountId,
+                        counterpartyId = template.counterpartyId
                     )
                 }
         }
@@ -302,12 +327,86 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         _dateRange.value = DateRange(start, end)
     }
 
+    /** Drops a custom range, snapping the filter back to the full selected month. */
+    fun clearDateRange() {
+        val m = _selectedMonth.value
+        _dateRange.value = DateRange(m.atDay(1), m.atEndOfMonth())
+    }
+
     fun insertTransaction(transaction: Transaction) {
         viewModelScope.launch { repository.insertTransaction(transaction) }
     }
 
     fun insertTemplate(template: RecurringTemplate) {
         viewModelScope.launch { repository.insertTemplate(template) }
+    }
+
+    // --- Counterparty-aware save paths used by the Add/Edit forms. Each resolves the chosen
+    // counterparty (creating it or re-curating its defaults) before writing the row. ---
+    fun saveTransaction(transaction: Transaction, choice: CounterpartyChoice) {
+        viewModelScope.launch {
+            val cpId = resolveCounterparty(choice, transaction.category, transaction.accountId)
+            repository.insertTransaction(transaction.copy(counterpartyId = cpId))
+        }
+    }
+
+    fun updateTransaction(transaction: Transaction, choice: CounterpartyChoice) {
+        viewModelScope.launch {
+            val cpId = resolveCounterparty(choice, transaction.category, transaction.accountId)
+            repository.updateTransaction(transaction.copy(counterpartyId = cpId))
+        }
+    }
+
+    fun saveTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
+        viewModelScope.launch {
+            val cpId = resolveCounterparty(choice, template.category, template.accountId)
+            repository.insertTemplate(template.copy(counterpartyId = cpId))
+        }
+    }
+
+    fun updateTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
+        viewModelScope.launch {
+            val cpId = resolveCounterparty(choice, template.category, template.accountId)
+            repository.updateTemplate(template.copy(counterpartyId = cpId))
+        }
+    }
+
+    private suspend fun resolveCounterparty(
+        choice: CounterpartyChoice,
+        category: String,
+        accountId: Int?
+    ): Int = when (choice) {
+        is CounterpartyChoice.New -> {
+            val id = repository.insertCounterparty(
+                Counterparty(name = choice.name, defaultCategory = category, defaultAccountId = accountId)
+            )
+            // IGNORE-conflict returns -1 when the name already exists; fall back to the existing row.
+            if (id > 0) id.toInt() else repository.getCounterpartyByName(choice.name)!!.id
+        }
+        is CounterpartyChoice.Existing -> {
+            if (choice.updateDefaults) {
+                repository.updateCounterparty(
+                    choice.counterparty.copy(defaultCategory = category, defaultAccountId = accountId)
+                )
+            }
+            choice.counterparty.id
+        }
+    }
+
+    fun insertCounterparty(counterparty: Counterparty) {
+        viewModelScope.launch { repository.insertCounterparty(counterparty) }
+    }
+
+    fun updateCounterparty(counterparty: Counterparty) {
+        viewModelScope.launch { repository.updateCounterparty(counterparty) }
+    }
+
+    fun deleteCounterparty(counterparty: Counterparty) {
+        viewModelScope.launch { repository.deleteCounterparty(counterparty) }
+    }
+
+    fun mergeCounterparties(source: Counterparty, target: Counterparty) {
+        viewModelScope.launch { repository.mergeCounterparties(source, target) }
     }
 
     fun updateTransaction(transaction: Transaction) {
@@ -402,7 +501,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         date = item.date,
                         isExpense = item.isExpense,
                         isPaid = true,
-                        templateId = item.templateId
+                        templateId = item.templateId,
+                        counterpartyId = item.counterpartyId
                     )
                 )
             } else {

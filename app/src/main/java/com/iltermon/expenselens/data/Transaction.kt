@@ -21,5 +21,6 @@ data class Transaction(
     val isExpense: Boolean,
     val isPaid: Boolean = false,
     val accountId: Int? = null,
-    val templateId: Int? = null   // links an auto/recurring-generated transaction back to its template
+    val templateId: Int? = null,  // links an auto/recurring-generated transaction back to its template
+    val counterpartyId: Int? = null
 )
