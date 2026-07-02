@@ -11,6 +11,8 @@
     <string name="action_clear">Clear</string>
     <string name="action_ok">OK</string>
     <string name="action_none">None</string>
+    <string name="action_yes">Yes</string>
+    <string name="action_no">No</string>
 
     <!-- Bottom navigation / screen titles -->
     <string name="nav_expenses">Expenses</string>
@@ -36,8 +38,18 @@
     <string name="form_amount">Amount (%1$s)</string>
     <string name="form_category">Category</string>
     <string name="form_account_optional">Account (optional)</string>
+    <string name="form_account">Account</string>
+    <string name="form_counterparty">Counterparty</string>
+    <!-- %1$s is what the user typed -->
+    <string name="counterparty_add_new">Add \"%1$s\"</string>
+    <string name="counterparty_did_you_mean">Did you mean?</string>
+    <string name="counterparty_update_defaults_title">Update defaults?</string>
+    <!-- %1$s is the counterparty name -->
+    <string name="counterparty_update_defaults_message">Update %1$s\'s default category and account to what you just picked?</string>
     <string name="form_date">Date</string>
     <string name="form_paid">Paid</string>
+    <string name="field_required">Required</string>
+    <string name="amount_invalid">Enter an amount greater than 0</string>
     <string name="form_recurrence">Recurrence</string>
     <string name="form_frequency">Frequency</string>
     <string name="form_unit">Unit</string>
@@ -73,7 +85,7 @@
     <string name="recurring_frequency_prefix">↻ %1$s</string>
 
     <!-- Expenses tab -->
-    <string name="expenses_this_month">This Month Expenses</string>
+    <string name="expenses_this_month">Expenses</string>
     <string name="expenses_remaining_payment">Remaining Payment</string>
     <string name="section_recurring">Recurring</string>
     <string name="section_to_be_paid">To be paid</string>
@@ -81,7 +93,7 @@
     <string name="no_expenses_for_period">No expenses for this period.</string>
 
     <!-- Income tab -->
-    <string name="income_this_month">This Month Income</string>
+    <string name="income_this_month">Income</string>
     <string name="income_pending">Pending Income</string>
     <string name="section_pending">Pending</string>
     <string name="section_received">Received</string>
@@ -109,6 +121,7 @@
     <!-- Settings -->
     <string name="settings_accounts">Accounts</string>
     <string name="settings_categories">Categories</string>
+    <string name="settings_counterparties">Counterparties</string>
     <string name="settings_advanced">Advanced settings</string>
     <string name="settings_language">Language</string>
     <string name="settings_currency">Currency</string>
@@ -161,6 +174,15 @@
     <string name="category_add_title">Add Category</string>
     <string name="category_name_field">Category Name</string>
     <string name="category_appears_in">Appears in</string>
+    <string name="counterparty_add_title">Add Counterparty</string>
+    <string name="counterparty_edit_title">Edit Counterparty</string>
+    <string name="counterparty_merge_title">Merge into…</string>
+    <string name="counterparty_name_field">Counterparty Name</string>
+    <string name="counterparty_default_category">Default category</string>
+    <string name="counterparty_default_account">Default account</string>
+    <string name="cd_edit_counterparty">Edit counterparty</string>
+    <string name="cd_delete_counterparty">Delete counterparty</string>
+    <string name="cd_merge_counterparty">Merge counterparty</string>
 
     <!-- Delete dialogs (list rows) -->
     <string name="delete_recurring_title">Delete recurring \"%1$s\"?</string>

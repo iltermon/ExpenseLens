@@ -33,11 +33,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
+import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.RecurringTemplate
 import java.time.Instant
 import java.time.LocalDate
@@ -52,18 +54,21 @@ internal fun RecurringForm(
     accounts: List<Account>,
     isExpense: Boolean,
     shared: TransactionFormState,
-    onSave: (RecurringTemplate) -> Unit,
+    onSave: (RecurringTemplate, CounterpartyChoice) -> Unit,
     initialStartDate: LocalDate = LocalDate.now(),
     initialEndDate: LocalDate? = null,
     initialInterval: Int = 1,
     initialUnit: String = "Month",
     initialAutoPayment: Boolean = isExpense,
-    saveLabel: String? = null
+    saveLabel: String? = null,
+    counterparties: List<Counterparty> = emptyList()
 ) {
     var description by shared::description
     var amount by shared::amount
     var selectedCategory by shared::selectedCategory
     var selectedAccount by shared::selectedAccount
+    var counterpartyName by shared::counterpartyName
+    var selectedCounterparty by shared::selectedCounterparty
     var categoryExpanded by remember { mutableStateOf(false) }
     var accountExpanded by remember { mutableStateOf(false) }
 
@@ -80,6 +85,15 @@ internal fun RecurringForm(
 
     val intervalInt = frequencyInterval.toIntOrNull()?.coerceAtLeast(1) ?: 1
     var autoPayment by remember { mutableStateOf(initialAutoPayment) }
+    var showErrors by remember { mutableStateOf(false) }
+    var pendingPrompt by remember { mutableStateOf<Pair<RecurringTemplate, Counterparty>?>(null) }
+
+    val amountValue = amount.toDoubleOrNull()
+    val amountValid = amountValue != null && amountValue > 0
+    val descriptionValid = description.isNotBlank()
+    val categoryValid = selectedCategory != null
+    val accountValid = selectedAccount != null
+    val counterpartyValid = counterpartyName.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -88,17 +102,34 @@ internal fun RecurringForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        CounterpartyField(
+            value = counterpartyName,
+            onValueChange = { counterpartyName = it; selectedCounterparty = null },
+            counterparties = counterparties,
+            onCounterpartySelected = { cp ->
+                selectedCounterparty = cp
+                counterpartyName = cp.name
+                cp.defaultCategory?.let { name -> selectedCategory = categories.find { it.name == name } }
+                cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
+            },
+            isError = showErrors && !counterpartyValid
+        )
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
             label = { Text(stringResource(R.string.form_description)) },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            isError = showErrors && !descriptionValid,
+            supportingText = { if (showErrors && !descriptionValid) Text(stringResource(R.string.field_required)) },
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
             value = amount,
-            onValueChange = { amount = it },
+            onValueChange = { amount = sanitizeAmountInput(it) },
             label = { Text(stringResource(R.string.form_amount, LocalCurrencySymbol.current)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            isError = showErrors && !amountValid,
+            supportingText = { if (showErrors && !amountValid) Text(stringResource(R.string.amount_invalid)) },
             modifier = Modifier.fillMaxWidth()
         )
         ExposedDropdownMenuBox(
@@ -111,6 +142,8 @@ internal fun RecurringForm(
                 readOnly = true,
                 label = { Text(stringResource(R.string.form_category)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                isError = showErrors && !categoryValid,
+                supportingText = { if (showErrors && !categoryValid) Text(stringResource(R.string.field_required)) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
@@ -127,12 +160,13 @@ internal fun RecurringForm(
                 value = selectedAccount?.let { accountWithType(it.name, it.type) } ?: "",
                 onValueChange = {},
                 readOnly = true,
-                label = { Text(stringResource(R.string.form_account_optional)) },
+                label = { Text(stringResource(R.string.form_account)) },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
+                isError = showErrors && !accountValid,
+                supportingText = { if (showErrors && !accountValid) Text(stringResource(R.string.field_required)) },
                 modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
-                DropdownMenuItem(text = { Text(stringResource(R.string.action_none)) }, onClick = { selectedAccount = null; accountExpanded = false })
                 accounts.forEach { acc ->
                     DropdownMenuItem(
                         text = { Text(accountWithType(acc.name, acc.type)) },
@@ -201,28 +235,40 @@ internal fun RecurringForm(
 
         Button(
             onClick = {
-                val parsedAmount = amount.toDoubleOrNull() ?: return@Button
-                val categoryName = selectedCategory?.name ?: return@Button
-                if (description.isBlank()) return@Button
-                onSave(
-                    RecurringTemplate(
-                        description = description,
-                        amount = parsedAmount,
-                        category = categoryName,
-                        startDate = startDate.toString(),
-                        endDate = if (isFinite) endDate.toString() else null,
-                        isExpense = isExpense,
-                        frequencyInterval = intervalInt,
-                        frequencyUnit = frequencyUnit,
-                        autoPayment = autoPayment,
-                        accountId = selectedAccount?.id
-                    )
+                showErrors = true
+                if (!counterpartyValid || !descriptionValid || !amountValid || !categoryValid || !accountValid) return@Button
+                val template = RecurringTemplate(
+                    description = description,
+                    amount = amountValue!!,
+                    category = selectedCategory!!.name,
+                    startDate = startDate.toString(),
+                    endDate = if (isFinite) endDate.toString() else null,
+                    isExpense = isExpense,
+                    frequencyInterval = intervalInt,
+                    frequencyUnit = frequencyUnit,
+                    autoPayment = autoPayment,
+                    accountId = selectedAccount!!.id
                 )
+                when (val res = counterpartyChoiceFor(counterpartyName, counterparties, selectedCategory!!.name, selectedAccount!!.id)) {
+                    is CounterpartyResolution.Ready -> onSave(template, res.choice)
+                    is CounterpartyResolution.NeedsPrompt -> pendingPrompt = template to res.existing
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
         }
+    }
+
+    pendingPrompt?.let { (template, existing) ->
+        UpdateDefaultsDialog(
+            name = existing.name,
+            onDecision = { update ->
+                onSave(template, CounterpartyChoice.Existing(existing, updateDefaults = update))
+                pendingPrompt = null
+            },
+            onDismiss = { pendingPrompt = null }
+        )
     }
 }
 

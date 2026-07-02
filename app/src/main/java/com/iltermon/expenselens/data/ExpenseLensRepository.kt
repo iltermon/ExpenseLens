@@ -75,6 +75,33 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
     suspend fun deleteCategory(category: Category) =
         db.categoryDao().delete(category)
 
+    // Counterparties
+    fun getAllCounterparties(): Flow<List<Counterparty>> =
+        db.counterpartyDao().getAllCounterparties()
+
+    suspend fun insertCounterparty(counterparty: Counterparty): Long =
+        db.counterpartyDao().insert(counterparty)
+
+    suspend fun updateCounterparty(counterparty: Counterparty) =
+        db.counterpartyDao().update(counterparty)
+
+    suspend fun getCounterpartyByName(name: String): Counterparty? =
+        db.counterpartyDao().getByName(name)
+
+    /** Reassigns every reference from [source] to [target], then removes [source]. */
+    suspend fun mergeCounterparties(source: Counterparty, target: Counterparty) = db.withTransaction {
+        db.counterpartyDao().reassignTransactions(source.id, target.id)
+        db.counterpartyDao().reassignTemplates(source.id, target.id)
+        db.counterpartyDao().delete(source)
+    }
+
+    /** Removes a counterparty, nulling the references transactions/templates hold to it. */
+    suspend fun deleteCounterparty(counterparty: Counterparty) = db.withTransaction {
+        db.counterpartyDao().clearTransactionRefs(counterparty.id)
+        db.counterpartyDao().clearTemplateRefs(counterparty.id)
+        db.counterpartyDao().delete(counterparty)
+    }
+
     // Clears financial data only, leaving accounts, categories and settings intact. Templates are
     // dropped first (and the whole thing runs in one transaction) so the auto-pay collector never
     // sees "transactions gone, templates present" and re-generates the rows we're deleting.

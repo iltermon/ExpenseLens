@@ -27,6 +27,7 @@ fun AddExpenseScreen(
 ) {
     val expenseCategories by viewModel.expenseCategories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val sharedFields = rememberTransactionFormState()
@@ -55,8 +56,9 @@ fun AddExpenseScreen(
                     accounts = accounts,
                     isExpense = true,
                     shared = sharedFields,
-                    onSave = { transaction ->
-                        viewModel.insertTransaction(transaction)
+                    counterparties = counterparties,
+                    onSave = { transaction, choice ->
+                        viewModel.saveTransaction(transaction, choice)
                         onNavigateBack()
                     }
                 )
@@ -66,8 +68,9 @@ fun AddExpenseScreen(
                     accounts = accounts,
                     isExpense = true,
                     shared = sharedFields,
-                    onSave = { template ->
-                        viewModel.insertTemplate(template)
+                    counterparties = counterparties,
+                    onSave = { template, choice ->
+                        viewModel.saveTemplate(template, choice)
                         onNavigateBack()
                     }
                 )

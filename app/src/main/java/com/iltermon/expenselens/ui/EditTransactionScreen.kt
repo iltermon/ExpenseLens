@@ -33,6 +33,7 @@ fun EditTransactionScreen(
     val expenseCategories by viewModel.expenseCategories.collectAsState()
     val incomeCategories by viewModel.incomeCategories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
 
     var original by remember { mutableStateOf<Transaction?>(null) }
     var prefilled by remember { mutableStateOf(false) }
@@ -50,6 +51,15 @@ fun EditTransactionScreen(
             shared.selectedCategory = categories.find { it.name == t.category }
             shared.selectedAccount = t.accountId?.let { id -> accounts.find { it.id == id } }
             prefilled = true
+        }
+    }
+
+    // Resolve the linked counterparty once the list is available (may load after the fields above).
+    LaunchedEffect(t, counterparties) {
+        val cp = t?.counterpartyId?.let { id -> counterparties.find { it.id == id } }
+        if (cp != null && shared.selectedCounterparty == null) {
+            shared.selectedCounterparty = cp
+            shared.counterpartyName = cp.name
         }
     }
 
@@ -78,9 +88,10 @@ fun EditTransactionScreen(
                     shared = shared,
                     initialDate = LocalDate.parse(t.date),
                     initialIsPaid = t.isPaid,
+                    counterparties = counterparties,
                     saveLabel = stringResource(R.string.action_update),
-                    onSave = { edited ->
-                        viewModel.updateTransaction(edited.copy(id = t.id, templateId = t.templateId))
+                    onSave = { edited, choice ->
+                        viewModel.updateTransaction(edited.copy(id = t.id, templateId = t.templateId), choice)
                         onNavigateBack()
                     }
                 )
