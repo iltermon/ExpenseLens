@@ -345,7 +345,7 @@ fun DateRangePickerDialog(
                 Text(
                     "$start – $end",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
                 )
             }
         )
