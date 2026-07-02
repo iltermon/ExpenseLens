@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -49,18 +50,6 @@ internal fun TransactionCoreFields(
 
     val validation = coreFieldsValid(shared)
 
-    CounterpartyField(
-        value = counterpartyName,
-        onValueChange = { counterpartyName = it; selectedCounterparty = null },
-        counterparties = counterparties,
-        onCounterpartySelected = { cp ->
-            selectedCounterparty = cp
-            counterpartyName = cp.name
-            cp.defaultCategory?.let { name -> selectedCategory = categories.find { it.name == name } }
-            cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
-        },
-        isError = showErrors && !validation.counterpartyValid
-    )
     OutlinedTextField(
         value = description,
         onValueChange = { description = it },
@@ -79,6 +68,18 @@ internal fun TransactionCoreFields(
         supportingText = { if (showErrors && !validation.amountValid) Text(stringResource(R.string.amount_invalid)) },
         modifier = Modifier.fillMaxWidth()
     )
+    CounterpartyField(
+        value = counterpartyName,
+        onValueChange = { counterpartyName = it; selectedCounterparty = null },
+        counterparties = counterparties,
+        onCounterpartySelected = { cp ->
+            selectedCounterparty = cp
+            counterpartyName = cp.name
+            cp.defaultCategory?.let { name -> selectedCategory = categories.find { it.name == name } }
+            cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
+        },
+        isError = showErrors && !validation.counterpartyValid
+    )
     ExposedDropdownMenuBox(
         expanded = categoryExpanded,
         onExpandedChange = { categoryExpanded = !categoryExpanded }
@@ -91,8 +92,7 @@ internal fun TransactionCoreFields(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
             isError = showErrors && !validation.categoryValid,
             supportingText = { if (showErrors && !validation.categoryValid) Text(stringResource(R.string.field_required)) },
-            //TODO: 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes ExposedDropdownMenuAnchorType and enabled parameters.
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
             categories.forEach { cat ->
@@ -112,8 +112,7 @@ internal fun TransactionCoreFields(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountExpanded) },
             isError = showErrors && !validation.accountValid,
             supportingText = { if (showErrors && !validation.accountValid) Text(stringResource(R.string.field_required)) },
-            //TODO: 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes ExposedDropdownMenuAnchorType and enabled parameters.
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = accountExpanded, onDismissRequest = { accountExpanded = false }) {
             accounts.forEach { acc ->
