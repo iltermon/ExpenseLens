@@ -41,7 +41,7 @@
     <string name="form_account">Hesap</string>
     <string name="form_counterparty">Karşı Taraf</string>
     <!-- %1$s kullanıcının yazdığıdır -->
-    <string name="counterparty_add_new">\"%1$s\" ekle</string>
+    <string name="counterparty_add_new">Ekle: \"%1$s\"</string>
     <string name="counterparty_did_you_mean">Bunu mu demek istediniz?</string>
     <string name="counterparty_update_defaults_title">Varsayılanlar güncellensin mi?</string>
     <!-- %1$s karşı taraf adıdır -->

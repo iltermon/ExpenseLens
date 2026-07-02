@@ -41,7 +41,7 @@
     <string name="form_account">Account</string>
     <string name="form_counterparty">Counterparty</string>
     <!-- %1$s is what the user typed -->
-    <string name="counterparty_add_new">Add \"%1$s\"</string>
+    <string name="counterparty_add_new">Use: \"%1$s\"</string>
     <string name="counterparty_did_you_mean">Did you mean?</string>
     <string name="counterparty_update_defaults_title">Update defaults?</string>
     <!-- %1$s is the counterparty name -->
