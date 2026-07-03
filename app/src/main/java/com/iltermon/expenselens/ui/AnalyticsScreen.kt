@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 /**
  * Net spending for a set of items: expenses add; income subtracts **only** when it's a refund —
@@ -67,7 +69,8 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
     val totalIncome = items.filter { !it.isExpense }.sumOf { it.amount }
     val recurringExpenses = items.filter { it.isExpense && it.templateId != null }.sumOf { it.amount }
     val recurringIncome = items.filter { !it.isExpense && it.templateId != null }.sumOf { it.amount }
-    val net = totalExpenses - totalIncome
+    // Net balance from the user's perspective: positive when income outpaces expenses.
+    val net = totalIncome - totalExpenses
 
     val isMonth = period == AnalyticsPeriod.MONTH
 
@@ -198,22 +201,25 @@ private fun SummaryCards(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            AmountRow(stringResource(R.string.analytics_income), totalIncome, recurringIncome)
+            AmountRow(stringResource(R.string.analytics_expenses), totalExpenses, recurringExpenses)
+            HorizontalDivider()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(stringResource(R.string.analytics_net), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                // Leading +/− so a surplus reads positive; the currency symbol stays next to the digits.
+                val sign = if (net > 0) "+" else if (net < 0) "-" else ""
                 Text(
-                    money(net),
+                    sign + money(abs(net)),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (net > 0) MaterialTheme.colorScheme.error
+                    color = if (net < 0) MaterialTheme.colorScheme.error
                     else MaterialTheme.colorScheme.primary
                 )
             }
-            AmountRow(stringResource(R.string.analytics_expenses), totalExpenses, recurringExpenses)
-            AmountRow(stringResource(R.string.analytics_income), totalIncome, recurringIncome)
         }
     }
 }
