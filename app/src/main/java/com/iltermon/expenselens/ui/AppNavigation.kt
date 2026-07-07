@@ -45,6 +45,10 @@ object Routes {
     const val ADD_EXPENSE = "add_expense"
     const val ADD_INCOME = "add_income"
     const val SETTINGS = "settings"
+    const val SETTINGS_ACCOUNTS = "settings_accounts"
+    const val SETTINGS_CATEGORIES = "settings_categories"
+    const val SETTINGS_COUNTERPARTIES = "settings_counterparties"
+    const val SETTINGS_TEMPLATES = "settings_templates"
     const val EDIT_TRANSACTION = "edit_transaction"
     const val EDIT_TEMPLATE = "edit_template"
 }
@@ -128,7 +132,30 @@ fun AppNavigation(
                     )
                 }
                 composable(Routes.SETTINGS) {
-                    SettingsScreen(viewModel = viewModel, onChangeLanguage = onChangeLanguage)
+                    SettingsScreen(
+                        viewModel = viewModel,
+                        onChangeLanguage = onChangeLanguage,
+                        onOpenAccounts = { navController.navigate(Routes.SETTINGS_ACCOUNTS) },
+                        onOpenCategories = { navController.navigate(Routes.SETTINGS_CATEGORIES) },
+                        onOpenCounterparties = { navController.navigate(Routes.SETTINGS_COUNTERPARTIES) },
+                        onOpenTemplates = { navController.navigate(Routes.SETTINGS_TEMPLATES) }
+                    )
+                }
+                composable(Routes.SETTINGS_ACCOUNTS) {
+                    AccountsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+                }
+                composable(Routes.SETTINGS_CATEGORIES) {
+                    CategoriesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+                }
+                composable(Routes.SETTINGS_COUNTERPARTIES) {
+                    CounterpartiesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+                }
+                composable(Routes.SETTINGS_TEMPLATES) {
+                    TemplatesScreen(
+                        viewModel = viewModel,
+                        onNavigateBack = { navController.popBackStack() },
+                        onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
+                    )
                 }
                 composable(Routes.ADD_EXPENSE) {
                     AddExpenseScreen(

@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -28,6 +29,8 @@ fun IncomeScreen(
 ) {
     val expenseItems by viewModel.expenseItems.collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
+    val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
 
     val items = expenseItems.filter { !it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -53,7 +56,7 @@ fun IncomeScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 
@@ -63,7 +66,7 @@ fun IncomeScreen(
                     SectionHeader(title = stringResource(R.string.section_pending), total = pendingItems.sumOf { it.amount })
                 }
                 items(pendingItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 
@@ -73,7 +76,7 @@ fun IncomeScreen(
                     SectionHeader(title = stringResource(R.string.section_received), total = receivedItems.sumOf { it.amount })
                 }
                 items(receivedItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 

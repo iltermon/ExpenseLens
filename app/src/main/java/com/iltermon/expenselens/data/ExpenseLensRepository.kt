@@ -62,8 +62,26 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
     suspend fun insertAccount(account: Account) =
         db.accountDao().insert(account)
 
-    suspend fun deleteAccount(account: Account) =
+    // Rename / type / limits / active — id is stable, so no reference cascade is needed.
+    suspend fun updateAccount(account: Account) =
+        db.accountDao().update(account)
+
+    /**
+     * Removes an account after moving its transactions/templates/counterparty-defaults to
+     * [reassignTo], or nulling those references when [reassignTo] is null ("leave unassigned").
+     */
+    suspend fun deleteAccount(account: Account, reassignTo: Account?) = db.withTransaction {
+        if (reassignTo != null) {
+            db.accountDao().reassignTransactions(account.id, reassignTo.id)
+            db.accountDao().reassignTemplates(account.id, reassignTo.id)
+            db.accountDao().reassignCounterpartyDefault(account.id, reassignTo.id)
+        } else {
+            db.accountDao().clearTransactionRefs(account.id)
+            db.accountDao().clearTemplateRefs(account.id)
+            db.accountDao().clearCounterpartyDefault(account.id)
+        }
         db.accountDao().delete(account)
+    }
 
     // Categories
     fun getAllCategories(): Flow<List<Category>> =
@@ -72,8 +90,29 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
     suspend fun insertCategory(category: Category) =
         db.categoryDao().insert(category)
 
-    suspend fun deleteCategory(category: Category) =
+    /**
+     * Persists an edited category. Because categories are referenced by NAME, a rename must cascade
+     * to transactions, templates, and counterparty defaults; other edits (type/limits/active) don't.
+     */
+    suspend fun updateCategory(old: Category, new: Category) = db.withTransaction {
+        db.categoryDao().update(new)
+        if (old.name != new.name) {
+            db.categoryDao().renameInTransactions(old.name, new.name)
+            db.categoryDao().renameInTemplates(old.name, new.name)
+            db.categoryDao().renameInCounterpartyDefaults(old.name, new.name)
+        }
+    }
+
+    /**
+     * Removes a category after moving its transactions/templates/counterparty-defaults to
+     * [reassignTo]. A category reference is a non-null string, so a target is mandatory.
+     */
+    suspend fun deleteCategory(category: Category, reassignTo: Category) = db.withTransaction {
+        db.categoryDao().renameInTransactions(category.name, reassignTo.name)
+        db.categoryDao().renameInTemplates(category.name, reassignTo.name)
+        db.categoryDao().renameInCounterpartyDefaults(category.name, reassignTo.name)
         db.categoryDao().delete(category)
+    }
 
     // Counterparties
     fun getAllCounterparties(): Flow<List<Counterparty>> =

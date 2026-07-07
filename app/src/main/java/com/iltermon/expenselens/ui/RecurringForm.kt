@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +62,9 @@ internal fun RecurringForm(
     initialUnit: String = "Month",
     initialAutoPayment: Boolean = isExpense,
     saveLabel: String? = null,
-    counterparties: List<Counterparty> = emptyList()
+    counterparties: List<Counterparty> = emptyList(),
+    gate: FormBackGate? = null,
+    sharedBaseline: SharedBaseline? = null
 ) {
     var frequencyInterval by remember { mutableStateOf(initialInterval.toString()) }
     var frequencyUnit by remember {
@@ -78,6 +81,57 @@ internal fun RecurringForm(
     var autoPayment by remember { mutableStateOf(initialAutoPayment) }
     var showErrors by remember { mutableStateOf(false) }
     val saveController = rememberCounterpartySaveController<RecurringTemplate>()
+    val localBaseline = remember {
+        RecurringLocalBaseline(
+            interval = initialInterval.toString(),
+            unit = if (initialUnit in frequencyUnits) initialUnit else frequencyUnits[2],
+            startDate = initialStartDate,
+            isFinite = initialEndDate != null,
+            endDate = initialEndDate ?: now.plusMonths(1),
+            autoPayment = initialAutoPayment
+        )
+    }
+
+    fun performSave() {
+        showErrors = true
+        val validation = coreFieldsValid(shared)
+        if (!validation.isValid) return
+        val template = RecurringTemplate(
+            description = shared.description,
+            amount = validation.amountValue!!,
+            category = shared.selectedCategory!!.name,
+            startDate = startDate.toString(),
+            endDate = if (isFinite) endDate.toString() else null,
+            isExpense = isExpense,
+            frequencyInterval = intervalInt,
+            frequencyUnit = frequencyUnit,
+            autoPayment = autoPayment,
+            accountId = shared.selectedAccount!!.id
+        )
+        saveController.submit(
+            entity = template,
+            name = shared.counterpartyName,
+            counterparties = counterparties,
+            category = shared.selectedCategory!!.name,
+            accountId = shared.selectedAccount!!.id,
+            onSave = onSave
+        )
+    }
+
+    if (gate != null) {
+        SideEffect {
+            gate.isDirty = {
+                (sharedBaseline?.isDirty(shared) ?: false) ||
+                    frequencyInterval != localBaseline.interval ||
+                    frequencyUnit != localBaseline.unit ||
+                    startDate != localBaseline.startDate ||
+                    isFinite != localBaseline.isFinite ||
+                    (isFinite && endDate != localBaseline.endDate) ||
+                    autoPayment != localBaseline.autoPayment
+            }
+            gate.requestSave = { performSave() }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -152,31 +206,7 @@ internal fun RecurringForm(
         }
 
         Button(
-            onClick = {
-                showErrors = true
-                val validation = coreFieldsValid(shared)
-                if (!validation.isValid) return@Button
-                val template = RecurringTemplate(
-                    description = shared.description,
-                    amount = validation.amountValue!!,
-                    category = shared.selectedCategory!!.name,
-                    startDate = startDate.toString(),
-                    endDate = if (isFinite) endDate.toString() else null,
-                    isExpense = isExpense,
-                    frequencyInterval = intervalInt,
-                    frequencyUnit = frequencyUnit,
-                    autoPayment = autoPayment,
-                    accountId = shared.selectedAccount!!.id
-                )
-                saveController.submit(
-                    entity = template,
-                    name = shared.counterpartyName,
-                    counterparties = counterparties,
-                    category = shared.selectedCategory!!.name,
-                    accountId = shared.selectedAccount!!.id,
-                    onSave = onSave
-                )
-            },
+            onClick = { performSave() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
@@ -185,6 +215,16 @@ internal fun RecurringForm(
 
     CounterpartySavePromptDialog(controller = saveController, onSave = onSave)
 }
+
+/** Baseline for the recurring form's local fields, used to detect unsaved changes on back. */
+private data class RecurringLocalBaseline(
+    val interval: String,
+    val unit: String,
+    val startDate: LocalDate,
+    val isFinite: Boolean,
+    val endDate: LocalDate,
+    val autoPayment: Boolean
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -9,5 +9,6 @@ data class Account(
     val name: String,
     val type: String,
     val limitMonthly: Double? = null,  // optional net spending limit per month
-    val limitYearly: Double? = null    // optional net spending limit per year
+    val limitYearly: Double? = null,   // optional net spending limit per year
+    val active: Boolean = true         // false = hidden from new-transaction pickers, kept everywhere else
 )

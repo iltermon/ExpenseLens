@@ -13,6 +13,42 @@
     <string name="action_none">None</string>
     <string name="action_yes">Yes</string>
     <string name="action_no">No</string>
+    <string name="action_discard">Discard</string>
+
+    <!-- Unsaved-changes confirmation on back -->
+    <string name="discard_changes_title">Unsaved changes</string>
+    <string name="discard_changes_message">You have unsaved changes. Save before leaving?</string>
+
+    <!-- Settings management -->
+    <string name="settings_templates">Templates</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_enable">Enable</string>
+    <string name="action_disable">Disable</string>
+    <string name="status_disabled">Disabled</string>
+    <string name="account_edit_title">Edit account</string>
+    <string name="category_edit_title">Edit category</string>
+    <string name="cd_manage_account">Manage %1$s</string>
+    <string name="cd_manage_category">Manage %1$s</string>
+
+    <!-- Delete + move dialog -->
+    <string name="delete_account_title">Delete “%1$s”?</string>
+    <string name="delete_account_message">Choose where its transactions should go, or leave them unassigned.</string>
+    <string name="delete_category_title">Delete “%1$s”?</string>
+    <string name="delete_category_message">Pick a category to move its transactions to.</string>
+    <string name="delete_counterparty_title">Delete “%1$s”?</string>
+    <string name="delete_counterparty_message">Choose where its transactions should go, or leave them unassigned.</string>
+    <string name="delete_move_to_label">Move to</string>
+    <string name="delete_leave_unassigned">Leave unassigned</string>
+    <string name="delete_reassign_required_hint">A category is required, so its transactions must move to another one.</string>
+
+    <!-- Templates management -->
+    <string name="templates_filter_all">All</string>
+    <string name="templates_filter_active">Active</string>
+    <string name="templates_filter_inactive">Ended</string>
+    <string name="template_status_active">Active</string>
+    <string name="template_status_ended">Ended</string>
+    <string name="template_delete_title">Delete template?</string>
+    <string name="template_delete_message">Delete “%1$s” and every transaction it generated? This can’t be undone.</string>
 
     <!-- Bottom navigation / screen titles -->
     <string name="nav_expenses">Expenses</string>
@@ -83,6 +119,8 @@
     <string name="unit_plural_year">Years</string>
     <!-- ↻ prefix for the recurrence label on a row -->
     <string name="recurring_frequency_prefix">↻ %1$s</string>
+    <!-- Remaining occurrences until a finite recurring series ends, shown next to the frequency -->
+    <string name="recurring_remaining">%1$d left</string>
 
     <!-- Expenses tab -->
     <string name="expenses_this_month">Expenses</string>

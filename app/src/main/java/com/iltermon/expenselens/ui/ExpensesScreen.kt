@@ -23,10 +23,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import java.time.LocalDate
@@ -41,6 +43,8 @@ fun ExpensesScreen(
 ) {
     val expenseItems by viewModel.expenseItems.collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
+    val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
 
     val items = expenseItems.filter { it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -66,7 +70,7 @@ fun ExpensesScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 
@@ -76,7 +80,7 @@ fun ExpensesScreen(
                     SectionHeader(title = stringResource(R.string.section_to_be_paid), total = unpaidItems.sumOf { it.amount })
                 }
                 items(unpaidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 
@@ -86,7 +90,7 @@ fun ExpensesScreen(
                     SectionHeader(title = stringResource(R.string.section_paid), total = paidItems.sumOf { it.amount })
                 }
                 items(paidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
                 }
             }
 
@@ -129,7 +133,13 @@ fun SectionHeader(title: String, total: Double) {
 }
 
 @Composable
-fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit, onClick: () -> Unit = {}) {
+fun ExpenseItemCard(
+    item: ExpenseItem,
+    onTogglePaid: (ExpenseItem) -> Unit,
+    onClick: () -> Unit = {},
+    counterpartyName: String? = null,
+    remainingOccurrences: Int? = null
+) {
     val dateFormatter = DateTimeFormatter.ofPattern("d MMM")
     Card(
         modifier = Modifier
@@ -170,16 +180,21 @@ fun ExpenseItemCard(item: ExpenseItem, onTogglePaid: (ExpenseItem) -> Unit, onCl
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    item.category,
+                    if (!counterpartyName.isNullOrBlank()) "${item.category} · $counterpartyName" else item.category,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 if (item.frequencyUnit != null) {
+                    val frequency = stringResource(
+                        R.string.recurring_frequency_prefix,
+                        frequencyLabel(item.frequencyInterval ?: 1, item.frequencyUnit)
+                    )
                     Text(
-                        stringResource(
-                            R.string.recurring_frequency_prefix,
-                            frequencyLabel(item.frequencyInterval ?: 1, item.frequencyUnit)
-                        ),
+                        if (remainingOccurrences != null)
+                            "$frequency · ${stringResource(R.string.recurring_remaining, remainingOccurrences)}"
+                        else frequency,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )

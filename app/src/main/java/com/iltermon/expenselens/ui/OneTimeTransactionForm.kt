@@ -13,6 +13,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,12 +39,49 @@ internal fun OneTimeTransactionForm(
     initialDate: LocalDate = LocalDate.now(),
     initialIsPaid: Boolean = true,
     saveLabel: String? = null,
-    counterparties: List<Counterparty> = emptyList()
+    counterparties: List<Counterparty> = emptyList(),
+    gate: FormBackGate? = null,
+    sharedBaseline: SharedBaseline? = null
 ) {
     var date by remember { mutableStateOf(initialDate) }
     var isPaid by remember { mutableStateOf(initialIsPaid) }
     var showErrors by remember { mutableStateOf(false) }
     val saveController = rememberCounterpartySaveController<Transaction>()
+    val localBaseline = remember { OneTimeLocalBaseline(initialDate, initialIsPaid) }
+
+    fun performSave() {
+        showErrors = true
+        val validation = coreFieldsValid(shared)
+        if (!validation.isValid) return
+        val txn = Transaction(
+            description = shared.description,
+            amount = validation.amountValue!!,
+            category = shared.selectedCategory!!.name,
+            date = date.toString(),
+            isExpense = isExpense,
+            isPaid = isPaid,
+            accountId = shared.selectedAccount!!.id
+        )
+        saveController.submit(
+            entity = txn,
+            name = shared.counterpartyName,
+            counterparties = counterparties,
+            category = shared.selectedCategory!!.name,
+            accountId = shared.selectedAccount!!.id,
+            onSave = onSave
+        )
+    }
+
+    if (gate != null) {
+        SideEffect {
+            gate.isDirty = {
+                (sharedBaseline?.isDirty(shared) ?: false) ||
+                    date != localBaseline.date ||
+                    isPaid != localBaseline.isPaid
+            }
+            gate.requestSave = { performSave() }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -71,28 +109,7 @@ internal fun OneTimeTransactionForm(
             Text(stringResource(R.string.form_paid), style = MaterialTheme.typography.bodyMedium)
         }
         Button(
-            onClick = {
-                showErrors = true
-                val validation = coreFieldsValid(shared)
-                if (!validation.isValid) return@Button
-                val txn = Transaction(
-                    description = shared.description,
-                    amount = validation.amountValue!!,
-                    category = shared.selectedCategory!!.name,
-                    date = date.toString(),
-                    isExpense = isExpense,
-                    isPaid = isPaid,
-                    accountId = shared.selectedAccount!!.id
-                )
-                saveController.submit(
-                    entity = txn,
-                    name = shared.counterpartyName,
-                    counterparties = counterparties,
-                    category = shared.selectedCategory!!.name,
-                    accountId = shared.selectedAccount!!.id,
-                    onSave = onSave
-                )
-            },
+            onClick = { performSave() },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(saveLabel ?: stringResource(if (isExpense) R.string.save_expense else R.string.save_income))
@@ -101,3 +118,6 @@ internal fun OneTimeTransactionForm(
 
     CounterpartySavePromptDialog(controller = saveController, onSave = onSave)
 }
+
+/** Baseline for the one-time form's local fields, used to detect unsaved changes on back. */
+private data class OneTimeLocalBaseline(val date: LocalDate, val isPaid: Boolean)

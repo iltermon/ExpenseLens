@@ -25,18 +25,21 @@ fun AddIncomeScreen(
     viewModel: ExpenseLensViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val incomeCategories by viewModel.incomeCategories.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
+    val incomeCategories by viewModel.activeIncomeCategories.collectAsState()
+    val accounts by viewModel.activeAccounts.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     val sharedFields = rememberTransactionFormState()
+    val gate = rememberFormBackGate()
+    val sharedBaseline = rememberSharedBaseline(sharedFields, ready = true)
+    val onBack = rememberUnsavedChangesBackGuard(gate, onNavigateBack)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.add_income_title)) },
-                navigationIcon = { BackButton(onClick = onNavigateBack) }
+                navigationIcon = { BackButton(onClick = onBack) }
             )
         }
     ) { padding ->
@@ -57,6 +60,8 @@ fun AddIncomeScreen(
                     isExpense = false,
                     shared = sharedFields,
                     counterparties = counterparties,
+                    gate = gate,
+                    sharedBaseline = sharedBaseline,
                     onSave = { transaction, choice ->
                         viewModel.saveTransaction(transaction, choice)
                         onNavigateBack()
@@ -69,6 +74,8 @@ fun AddIncomeScreen(
                     isExpense = false,
                     shared = sharedFields,
                     counterparties = counterparties,
+                    gate = gate,
+                    sharedBaseline = sharedBaseline,
                     onSave = { template, choice ->
                         viewModel.saveTemplate(template, choice)
                         onNavigateBack()
