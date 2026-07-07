@@ -52,7 +52,7 @@ fun EditTemplateScreen(
             if (template.counterpartyId != null && cp == null) return@LaunchedEffect
             shared.description = template.description
             shared.amount = formatAmount(template.amount)
-            shared.selectedCategory = categories.find { it.name == template.category }
+            shared.selectedCategory = categories.find { it.id == template.categoryId }
             shared.selectedAccount = template.accountId?.let { id -> accounts.find { it.id == id } }
             if (cp != null) {
                 shared.selectedCounterparty = cp

@@ -29,7 +29,7 @@ data class ExpenseItem(
     val id: Int,
     val description: String,
     val amount: Double,
-    val category: String,
+    val categoryId: Int?,
     val date: String,
     val isExpense: Boolean,
     val isPaid: Boolean,
@@ -103,7 +103,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                                         Transaction(
                                             description = template.description,
                                             amount = template.amount,
-                                            category = template.category,
+                                            categoryId = template.categoryId,
                                             date = dateStr,
                                             isExpense = template.isExpense,
                                             isPaid = true,
@@ -150,6 +150,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
 
     val allCategories: StateFlow<List<Category>> = repository.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    // id -> name lookup so lists/analytics can render a categoryId. Categories are referenced by id
+    // now, so display must resolve the name (mirrors the counterparty id->name map used in the UI).
+    val categoryNamesById: StateFlow<Map<Int, String>> = repository.getAllCategories()
+        .map { list -> list.associate { it.id to it.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyMap())
 
     val expenseCategories: StateFlow<List<Category>> = repository.getAllCategories()
         .map { list -> list.filter { it.type == null || it.type == "expense" } }
@@ -219,7 +225,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 id = t.id,
                 description = t.description,
                 amount = t.amount,
-                category = t.category,
+                categoryId = t.categoryId,
                 date = t.date,
                 isExpense = t.isExpense,
                 isPaid = t.isPaid,
@@ -242,7 +248,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         id = template.id,
                         description = template.description,
                         amount = template.amount,
-                        category = template.category,
+                        categoryId = template.categoryId,
                         date = date.toString(),
                         isExpense = template.isExpense,
                         isPaid = false,
@@ -359,40 +365,40 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     // counterparty (creating it or re-curating its defaults) before writing the row. ---
     fun saveTransaction(transaction: Transaction, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, transaction.category, transaction.accountId)
+            val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
             repository.insertTransaction(transaction.copy(counterpartyId = cpId))
         }
     }
 
     fun updateTransaction(transaction: Transaction, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, transaction.category, transaction.accountId)
+            val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
             repository.updateTransaction(transaction.copy(counterpartyId = cpId))
         }
     }
 
     fun saveTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, template.category, template.accountId)
+            val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.insertTemplate(template.copy(counterpartyId = cpId))
         }
     }
 
     fun updateTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, template.category, template.accountId)
+            val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.updateTemplate(template.copy(counterpartyId = cpId))
         }
     }
 
     private suspend fun resolveCounterparty(
         choice: CounterpartyChoice,
-        category: String,
+        categoryId: Int?,
         accountId: Int?
     ): Int = when (choice) {
         is CounterpartyChoice.New -> {
             val id = repository.insertCounterparty(
-                Counterparty(name = choice.name, defaultCategory = category, defaultAccountId = accountId)
+                Counterparty(name = choice.name, defaultCategoryId = categoryId, defaultAccountId = accountId)
             )
             // IGNORE-conflict returns -1 when the name already exists; fall back to the existing row.
             if (id > 0) id.toInt() else repository.getCounterpartyByName(choice.name)!!.id
@@ -400,7 +406,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         is CounterpartyChoice.Existing -> {
             if (choice.updateDefaults) {
                 repository.updateCounterparty(
-                    choice.counterparty.copy(defaultCategory = category, defaultAccountId = accountId)
+                    choice.counterparty.copy(defaultCategoryId = categoryId, defaultAccountId = accountId)
                 )
             }
             choice.counterparty.id
@@ -472,17 +478,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.insertCategory(category) }
     }
 
-    /** Persist an edited category; a rename cascades to transactions/templates/counterparty defaults. */
-    fun updateCategory(old: Category, new: Category) {
-        launchBusy { repository.updateCategory(old, new) }
+    /** Persist an edited category. Categories are referenced by id, so a rename needs no cascade. */
+    fun updateCategory(category: Category) {
+        viewModelScope.launch { repository.updateCategory(category) }
     }
 
     fun toggleCategoryActive(category: Category) {
-        viewModelScope.launch { repository.updateCategory(category, category.copy(active = !category.active)) }
+        viewModelScope.launch { repository.updateCategory(category.copy(active = !category.active)) }
     }
 
-    /** Delete a category, moving its transactions/templates to the mandatory [reassignTo]. */
-    fun deleteCategory(category: Category, reassignTo: Category) {
+    /** Delete a category, moving its references to [reassignTo] or nulling them when null. */
+    fun deleteCategory(category: Category, reassignTo: Category?) {
         launchBusy { repository.deleteCategory(category, reassignTo) }
     }
 
@@ -534,7 +540,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                     Transaction(
                         description = item.description,
                         amount = item.amount,
-                        category = item.category,
+                        categoryId = item.categoryId,
                         date = item.date,
                         isExpense = item.isExpense,
                         isPaid = true,

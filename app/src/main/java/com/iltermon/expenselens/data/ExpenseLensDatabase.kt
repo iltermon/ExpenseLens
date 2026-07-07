@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class, AppSetting::class, Counterparty::class],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class ExpenseLensDatabase : RoomDatabase() {
@@ -164,6 +164,110 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Categories move from name-references to id-references, matching accounts/counterparties.
+                // SQLite can't drop a column, so each table that stored a category name is recreated
+                // (copy-swap, same as MIGRATION_5_6) with a nullable categoryId backfilled from the name.
+                // An unmatched or NULL name yields NULL categoryId ("Uncategorized").
+
+                // transactions: category (TEXT NOT NULL) -> categoryId (INTEGER, nullable)
+                db.execSQL(
+                    """
+                    CREATE TABLE transactions_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        categoryId INTEGER,
+                        date TEXT NOT NULL,
+                        isExpense INTEGER NOT NULL,
+                        isPaid INTEGER NOT NULL,
+                        accountId INTEGER,
+                        templateId INTEGER,
+                        counterpartyId INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO transactions_new
+                        (id, description, amount, categoryId, date, isExpense, isPaid,
+                         accountId, templateId, counterpartyId)
+                    SELECT id, description, amount,
+                           (SELECT c.id FROM categories c WHERE c.name = transactions.category),
+                           date, isExpense, isPaid, accountId, templateId, counterpartyId
+                    FROM transactions
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE transactions")
+                db.execSQL("ALTER TABLE transactions_new RENAME TO transactions")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_templateId_date " +
+                        "ON transactions (templateId, date)"
+                )
+
+                // recurring_templates: category (TEXT NOT NULL) -> categoryId (INTEGER, nullable)
+                db.execSQL(
+                    """
+                    CREATE TABLE recurring_templates_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        description TEXT NOT NULL,
+                        amount REAL NOT NULL,
+                        categoryId INTEGER,
+                        startDate TEXT NOT NULL,
+                        endDate TEXT,
+                        isExpense INTEGER NOT NULL,
+                        frequencyInterval INTEGER NOT NULL,
+                        frequencyUnit TEXT NOT NULL,
+                        autoPayment INTEGER NOT NULL,
+                        accountId INTEGER,
+                        counterpartyId INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO recurring_templates_new
+                        (id, description, amount, categoryId, startDate, endDate, isExpense,
+                         frequencyInterval, frequencyUnit, autoPayment, accountId, counterpartyId)
+                    SELECT id, description, amount,
+                           (SELECT c.id FROM categories c WHERE c.name = recurring_templates.category),
+                           startDate, endDate, isExpense, frequencyInterval, frequencyUnit,
+                           autoPayment, accountId, counterpartyId
+                    FROM recurring_templates
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE recurring_templates")
+                db.execSQL("ALTER TABLE recurring_templates_new RENAME TO recurring_templates")
+
+                // counterparties: defaultCategory (TEXT) -> defaultCategoryId (INTEGER)
+                db.execSQL(
+                    """
+                    CREATE TABLE counterparties_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        defaultCategoryId INTEGER,
+                        defaultAccountId INTEGER
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO counterparties_new (id, name, defaultCategoryId, defaultAccountId)
+                    SELECT id, name,
+                           (SELECT c.id FROM categories c WHERE c.name = counterparties.defaultCategory),
+                           defaultAccountId
+                    FROM counterparties
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE counterparties")
+                db.execSQL("ALTER TABLE counterparties_new RENAME TO counterparties")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_counterparties_name ON counterparties (name)"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): ExpenseLensDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -171,7 +275,7 @@ abstract class ExpenseLensDatabase : RoomDatabase() {
                     ExpenseLensDatabase::class.java,
                     "expenselens_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                     .build()
                 INSTANCE = instance
                 instance

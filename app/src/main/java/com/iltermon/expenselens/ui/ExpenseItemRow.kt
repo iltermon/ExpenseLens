@@ -33,7 +33,8 @@ fun ExpenseItemRow(
     viewModel: ExpenseLensViewModel,
     onEditTransaction: (Int) -> Unit,
     onEditTemplate: (Int) -> Unit,
-    counterpartyNames: Map<Int, String> = emptyMap()
+    counterpartyNames: Map<Int, String> = emptyMap(),
+    categoryNames: Map<Int, String> = emptyMap()
 ) {
     val template = item.templateId?.let { tid -> templates.find { it.id == tid } }
     var showDelete by remember { mutableStateOf(false) }
@@ -54,6 +55,7 @@ fun ExpenseItemRow(
                 else item.transactionId?.let(onEditTransaction)
             },
             counterpartyName = item.counterpartyId?.let { counterpartyNames[it] },
+            categoryName = item.categoryId?.let { categoryNames[it] },
             remainingOccurrences = remainingOccurrences
         )
     }

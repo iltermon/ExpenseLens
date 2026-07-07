@@ -18,3 +18,4 @@ local.properties
 *.apk
 *.dm
 /app/release/output-metadata.json
+/.idea/

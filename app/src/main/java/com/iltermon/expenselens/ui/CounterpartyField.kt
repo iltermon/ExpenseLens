@@ -124,13 +124,13 @@ internal sealed interface CounterpartyResolution {
 internal fun counterpartyChoiceFor(
     name: String,
     counterparties: List<Counterparty>,
-    category: String,
+    categoryId: Int?,
     accountId: Int?
 ): CounterpartyResolution {
     val trimmed = name.trim()
     val existing = counterparties.find { it.name.equals(trimmed, ignoreCase = true) }
         ?: return CounterpartyResolution.Ready(CounterpartyChoice.New(trimmed))
-    val changed = existing.defaultCategory != category || existing.defaultAccountId != accountId
+    val changed = existing.defaultCategoryId != categoryId || existing.defaultAccountId != accountId
     return if (changed) CounterpartyResolution.NeedsPrompt(existing)
     else CounterpartyResolution.Ready(CounterpartyChoice.Existing(existing, updateDefaults = false))
 }

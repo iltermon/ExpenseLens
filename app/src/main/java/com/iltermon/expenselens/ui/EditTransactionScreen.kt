@@ -52,7 +52,7 @@ fun EditTransactionScreen(
             if (t.counterpartyId != null && cp == null) return@LaunchedEffect
             shared.description = t.description
             shared.amount = formatAmount(t.amount)
-            shared.selectedCategory = categories.find { it.name == t.category }
+            shared.selectedCategory = categories.find { it.id == t.categoryId }
             shared.selectedAccount = t.accountId?.let { id -> accounts.find { it.id == id } }
             if (cp != null) {
                 shared.selectedCounterparty = cp

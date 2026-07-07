@@ -46,11 +46,11 @@ import kotlin.math.abs
  * i.e. recorded into an expense/"both" category. Income posted to an income-only category (salary,
  * etc.) is real income, not a return, so it's ignored and never reduces spending.
  */
-private fun netOf(items: List<ExpenseItem>, incomeOnlyCategories: Set<String>): Double =
+private fun netOf(items: List<ExpenseItem>, incomeOnlyCategoryIds: Set<Int>): Double =
     items.sumOf {
         when {
             it.isExpense -> it.amount
-            it.category in incomeOnlyCategories -> 0.0
+            it.categoryId in incomeOnlyCategoryIds -> 0.0
             else -> -it.amount
         }
     }
@@ -75,13 +75,13 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
     val isMonth = period == AnalyticsPeriod.MONTH
 
     // Income-only categories are real income (salary, etc.), not returns — they must not reduce spend.
-    val incomeOnlyCategories = categories.filter { it.type == "income" }.map { it.name }.toSet()
+    val incomeOnlyCategoryIds = categories.filter { it.type == "income" }.map { it.id }.toSet()
 
     // Net spending per category for the active period; keep any category that was spent on OR has
     // a limit set. Sorted by spend descending (mirrors the spreadsheet's Monthly Summary).
     val categoryRows = categories.mapNotNull { cat ->
         val limit = if (isMonth) cat.limitMonthly else cat.limitYearly
-        val net = netOf(items.filter { it.category == cat.name }, incomeOnlyCategories)
+        val net = netOf(items.filter { it.categoryId == cat.id }, incomeOnlyCategoryIds)
         if (net > 0 || limit != null) SpendRow(cat.name, net, null, limit) else null
     }.sortedByDescending { it.net }
 
@@ -89,8 +89,8 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
     val accountRows = accounts.mapNotNull { acc ->
         val limit = if (isMonth) acc.limitMonthly else acc.limitYearly
         val accItems = items.filter { it.accountId == acc.id }
-        val net = netOf(accItems, incomeOnlyCategories)
-        val recurring = netOf(accItems.filter { it.templateId != null }, incomeOnlyCategories)
+        val net = netOf(accItems, incomeOnlyCategoryIds)
+        val recurring = netOf(accItems.filter { it.templateId != null }, incomeOnlyCategoryIds)
         if (net != 0.0 || recurring != 0.0 || limit != null) {
             SpendRow(acc.name, net, recurring, limit)
         } else null

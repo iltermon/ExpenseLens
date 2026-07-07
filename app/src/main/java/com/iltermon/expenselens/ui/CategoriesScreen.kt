@@ -91,7 +91,7 @@ fun CategoriesScreen(viewModel: ExpenseLensViewModel, onNavigateBack: () -> Unit
         CategoryDialog(
             initial = category,
             onDismiss = { editCategory = null },
-            onConfirm = { updated -> viewModel.updateCategory(category, updated); editCategory = null }
+            onConfirm = { updated -> viewModel.updateCategory(updated); editCategory = null }
         )
     }
 
@@ -101,9 +101,9 @@ fun CategoriesScreen(viewModel: ExpenseLensViewModel, onNavigateBack: () -> Unit
             message = stringResource(R.string.delete_category_message),
             targets = categories.filter { it.id != category.id },
             targetLabel = { it.name },
-            allowLeaveUnassigned = false,
+            allowLeaveUnassigned = true,
             onDismiss = { deleteCategory = null },
-            onConfirm = { target -> target?.let { viewModel.deleteCategory(category, it) }; deleteCategory = null }
+            onConfirm = { target -> viewModel.deleteCategory(category, target); deleteCategory = null }
         )
     }
 }

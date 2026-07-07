@@ -26,10 +26,10 @@ import com.iltermon.expenselens.R
  * Confirm-delete dialog that also decides where the deleted item's transactions go. Generic over the
  * replacement type [T] (Account / Category / Counterparty).
  *
- * When [allowLeaveUnassigned] is true (nullable references — accounts, counterparties) the picker
- * offers a "leave unassigned" choice and defaults to it, so confirm is immediately enabled. When
- * false (categories, whose reference is a non-null name) a target must be chosen before confirm
- * enables. [onConfirm] passes the chosen target, or null for "leave unassigned".
+ * When [allowLeaveUnassigned] is true (nullable references — accounts, categories, counterparties)
+ * the picker offers a "leave unassigned" choice and defaults to it, so confirm is immediately
+ * enabled. When false, a target must be chosen before confirm enables. [onConfirm] passes the
+ * chosen target, or null for "leave unassigned".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
