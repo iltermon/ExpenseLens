@@ -64,7 +64,7 @@ object DataImporter {
             repo.insertAccount(Account(name = name, type = ACCOUNT_TYPES[name] ?: DEFAULT_ACCOUNT_TYPE))
         }
         val accountIdByName = repo.getAllAccounts().first().associate { it.name to it.id }
-
+        val categoryIdByName = repo.getAllCategories().first().associate { it.name to it.id }
         // Categories — typed by which sheet(s) they appear in (null = both, shouldn't occur here).
         val expenseCats = (expenses.mapNotNull { cell(it, 2) } + recurring.mapNotNull { cell(it, 2) }).toSet()
         val incomeCats = income.mapNotNull { cell(it, 2) }.toSet()
@@ -86,7 +86,7 @@ object DataImporter {
                 Transaction(
                     description = cell(row, 3).orEmpty(),
                     amount = cell(row, 4)?.toDoubleOrNull() ?: 0.0,
-                    category = cell(row, 2).orEmpty(),
+                    categoryId = cell(row, 2)?.let { categoryIdByName[it] },
                     date = date,
                     isExpense = true,
                     isPaid = true,
@@ -105,7 +105,7 @@ object DataImporter {
                 Transaction(
                     description = cell(row, 3).orEmpty(),
                     amount = cell(row, 4)?.toDoubleOrNull() ?: 0.0,
-                    category = cell(row, 2).orEmpty(),
+                    categoryId = cell(row, 2)?.let { categoryIdByName[it] },
                     date = date,
                     isExpense = false,
                     isPaid = true,
@@ -126,7 +126,7 @@ object DataImporter {
                 RecurringTemplate(
                     description = cell(row, 0).orEmpty(),
                     amount = cell(row, 1)?.toDoubleOrNull() ?: 0.0,
-                    category = cell(row, 2).orEmpty(),
+                    categoryId = cell(row, 2)?.let { categoryIdByName[it] },
                     startDate = startDate,
                     endDate = cell(row, 4)?.let { excelSerialToIso(it) },
                     isExpense = true,

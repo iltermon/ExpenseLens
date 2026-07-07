@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -73,6 +74,7 @@ fun CounterpartiesScreen(viewModel: ExpenseLensViewModel, onNavigateBack: () -> 
             items(counterparties) { counterparty ->
                 CounterpartyRow(
                     counterparty = counterparty,
+                    categories = categories,
                     accounts = accounts,
                     onEdit = { editCounterparty = counterparty },
                     onMerge = { mergeCounterparty = counterparty },
@@ -128,6 +130,7 @@ fun CounterpartiesScreen(viewModel: ExpenseLensViewModel, onNavigateBack: () -> 
 @Composable
 private fun CounterpartyRow(
     counterparty: Counterparty,
+    categories: List<Category>,
     accounts: List<Account>,
     onEdit: () -> Unit,
     onMerge: () -> Unit,
@@ -135,7 +138,7 @@ private fun CounterpartyRow(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val subtitle = buildList {
-        counterparty.defaultCategory?.let { add(it) }
+        counterparty.defaultCategoryId?.let { id -> categories.find { it.id == id }?.let { add(it.name) } }
         counterparty.defaultAccountId?.let { id -> accounts.find { it.id == id }?.let { add(it.name) } }
     }.joinToString(stringResource(R.string.limit_separator))
 
@@ -184,7 +187,7 @@ private fun CounterpartyDialog(
     onConfirm: (Counterparty) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
-    var defaultCategory by remember { mutableStateOf(initial?.defaultCategory) }
+    var defaultCategoryId by remember { mutableStateOf(initial?.defaultCategoryId) }
     var defaultAccountId by remember { mutableStateOf(initial?.defaultAccountId) }
     var catExpanded by remember { mutableStateOf(false) }
     var accExpanded by remember { mutableStateOf(false) }
@@ -205,17 +208,17 @@ private fun CounterpartyDialog(
                 )
                 ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = !catExpanded }) {
                     OutlinedTextField(
-                        value = defaultCategory ?: noneLabel,
+                        value = categories.find { it.id == defaultCategoryId }?.name ?: noneLabel,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(stringResource(R.string.counterparty_default_category)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
-                        DropdownMenuItem(text = { Text(noneLabel) }, onClick = { defaultCategory = null; catExpanded = false })
+                        DropdownMenuItem(text = { Text(noneLabel) }, onClick = { defaultCategoryId = null; catExpanded = false })
                         categories.forEach { c ->
-                            DropdownMenuItem(text = { Text(c.name) }, onClick = { defaultCategory = c.name; catExpanded = false })
+                            DropdownMenuItem(text = { Text(c.name) }, onClick = { defaultCategoryId = c.id; catExpanded = false })
                         }
                     }
                 }
@@ -226,7 +229,7 @@ private fun CounterpartyDialog(
                         readOnly = true,
                         label = { Text(stringResource(R.string.counterparty_default_account)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(expanded = accExpanded, onDismissRequest = { accExpanded = false }) {
                         DropdownMenuItem(text = { Text(noneLabel) }, onClick = { defaultAccountId = null; accExpanded = false })
@@ -244,7 +247,7 @@ private fun CounterpartyDialog(
                         onConfirm(
                             (initial ?: Counterparty(name = "")).copy(
                                 name = name.trim(),
-                                defaultCategory = defaultCategory,
+                                defaultCategoryId = defaultCategoryId,
                                 defaultAccountId = defaultAccountId
                             )
                         )
@@ -281,7 +284,7 @@ private fun MergeCounterpartyDialog(
                     readOnly = true,
                     label = { Text(source.name) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     others.forEach { cp ->

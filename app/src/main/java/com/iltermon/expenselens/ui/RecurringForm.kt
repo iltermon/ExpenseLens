@@ -99,7 +99,7 @@ internal fun RecurringForm(
         val template = RecurringTemplate(
             description = shared.description,
             amount = validation.amountValue!!,
-            category = shared.selectedCategory!!.name,
+            categoryId = shared.selectedCategory!!.id,
             startDate = startDate.toString(),
             endDate = if (isFinite) endDate.toString() else null,
             isExpense = isExpense,
@@ -112,7 +112,7 @@ internal fun RecurringForm(
             entity = template,
             name = shared.counterpartyName,
             counterparties = counterparties,
-            category = shared.selectedCategory!!.name,
+            categoryId = shared.selectedCategory!!.id,
             accountId = shared.selectedAccount!!.id,
             onSave = onSave
         )

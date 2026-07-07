@@ -56,7 +56,7 @@ internal fun OneTimeTransactionForm(
         val txn = Transaction(
             description = shared.description,
             amount = validation.amountValue!!,
-            category = shared.selectedCategory!!.name,
+            categoryId = shared.selectedCategory!!.id,
             date = date.toString(),
             isExpense = isExpense,
             isPaid = isPaid,
@@ -66,7 +66,7 @@ internal fun OneTimeTransactionForm(
             entity = txn,
             name = shared.counterpartyName,
             counterparties = counterparties,
-            category = shared.selectedCategory!!.name,
+            categoryId = shared.selectedCategory!!.id,
             accountId = shared.selectedAccount!!.id,
             onSave = onSave
         )

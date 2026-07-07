@@ -12,6 +12,6 @@ import androidx.room.PrimaryKey
 data class Counterparty(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val defaultCategory: String? = null,
+    val defaultCategoryId: Int? = null,
     val defaultAccountId: Int? = null
 )

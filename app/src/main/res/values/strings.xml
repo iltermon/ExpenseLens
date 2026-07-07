@@ -73,6 +73,7 @@
     <!-- %1$s is the active currency symbol -->
     <string name="form_amount">Amount (%1$s)</string>
     <string name="form_category">Category</string>
+    <string name="uncategorized">Uncategorized</string>
     <string name="form_account_optional">Account (optional)</string>
     <string name="form_account">Account</string>
     <string name="form_counterparty">Counterparty</string>

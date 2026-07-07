@@ -31,6 +31,7 @@ fun IncomeScreen(
     val templates by viewModel.allTemplates.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
     val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
+    val categoryNames by viewModel.categoryNamesById.collectAsState()
 
     val items = expenseItems.filter { !it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -56,7 +57,7 @@ fun IncomeScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 
@@ -66,7 +67,7 @@ fun IncomeScreen(
                     SectionHeader(title = stringResource(R.string.section_pending), total = pendingItems.sumOf { it.amount })
                 }
                 items(pendingItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 
@@ -76,7 +77,7 @@ fun IncomeScreen(
                     SectionHeader(title = stringResource(R.string.section_received), total = receivedItems.sumOf { it.amount })
                 }
                 items(receivedItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 

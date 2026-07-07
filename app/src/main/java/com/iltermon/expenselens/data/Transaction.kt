@@ -16,7 +16,7 @@ data class Transaction(
     val id: Int = 0,
     val description: String,
     val amount: Double,
-    val category: String,
+    val categoryId: Int? = null,
     val date: String,
     val isExpense: Boolean,
     val isPaid: Boolean = false,

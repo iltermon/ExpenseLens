@@ -45,6 +45,7 @@ fun ExpensesScreen(
     val templates by viewModel.allTemplates.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
     val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
+    val categoryNames by viewModel.categoryNamesById.collectAsState()
 
     val items = expenseItems.filter { it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
@@ -70,7 +71,7 @@ fun ExpensesScreen(
             if (recurringItems.isNotEmpty()) {
                 item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
                 items(recurringItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 
@@ -80,7 +81,7 @@ fun ExpensesScreen(
                     SectionHeader(title = stringResource(R.string.section_to_be_paid), total = unpaidItems.sumOf { it.amount })
                 }
                 items(unpaidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 
@@ -90,7 +91,7 @@ fun ExpensesScreen(
                     SectionHeader(title = stringResource(R.string.section_paid), total = paidItems.sumOf { it.amount })
                 }
                 items(paidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames)
+                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
             }
 
@@ -138,8 +139,10 @@ fun ExpenseItemCard(
     onTogglePaid: (ExpenseItem) -> Unit,
     onClick: () -> Unit = {},
     counterpartyName: String? = null,
+    categoryName: String? = null,
     remainingOccurrences: Int? = null
 ) {
+    val categoryLabel = categoryName ?: stringResource(R.string.uncategorized)
     val dateFormatter = DateTimeFormatter.ofPattern("d MMM")
     Card(
         modifier = Modifier
@@ -180,7 +183,7 @@ fun ExpenseItemCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    if (!counterpartyName.isNullOrBlank()) "${item.category} · $counterpartyName" else item.category,
+                    if (!counterpartyName.isNullOrBlank()) "$categoryLabel · $counterpartyName" else categoryLabel,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

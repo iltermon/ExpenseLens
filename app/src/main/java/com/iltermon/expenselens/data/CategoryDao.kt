@@ -17,14 +17,24 @@ interface CategoryDao {
     @Delete
     suspend fun delete(category: Category)
 
-    // Categories are referenced by NAME (not id), so a rename or a delete-with-reassign must cascade
-    // the name across every table that stores it: transactions, templates, and counterparty defaults.
-    @Query("UPDATE transactions SET category = :newName WHERE category = :oldName")
-    suspend fun renameInTransactions(oldName: String, newName: String)
+    // Categories are referenced by id, so a rename needs no cascade. A delete reassigns the id to a
+    // replacement category (or nulls it — "leave unassigned") across transactions, templates, and
+    // counterparty defaults, mirroring the account pattern in AccountDao.
+    @Query("UPDATE transactions SET categoryId = :target WHERE categoryId = :source")
+    suspend fun reassignTransactions(source: Int, target: Int)
 
-    @Query("UPDATE recurring_templates SET category = :newName WHERE category = :oldName")
-    suspend fun renameInTemplates(oldName: String, newName: String)
+    @Query("UPDATE recurring_templates SET categoryId = :target WHERE categoryId = :source")
+    suspend fun reassignTemplates(source: Int, target: Int)
 
-    @Query("UPDATE counterparties SET defaultCategory = :newName WHERE defaultCategory = :oldName")
-    suspend fun renameInCounterpartyDefaults(oldName: String, newName: String)
+    @Query("UPDATE counterparties SET defaultCategoryId = :target WHERE defaultCategoryId = :source")
+    suspend fun reassignCounterpartyDefault(source: Int, target: Int)
+
+    @Query("UPDATE transactions SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearTransactionRefs(id: Int)
+
+    @Query("UPDATE recurring_templates SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearTemplateRefs(id: Int)
+
+    @Query("UPDATE counterparties SET defaultCategoryId = NULL WHERE defaultCategoryId = :id")
+    suspend fun clearCounterpartyDefault(id: Int)
 }

@@ -75,7 +75,7 @@ internal fun TransactionCoreFields(
         onCounterpartySelected = { cp ->
             selectedCounterparty = cp
             counterpartyName = cp.name
-            cp.defaultCategory?.let { name -> selectedCategory = categories.find { it.name == name } }
+            cp.defaultCategoryId?.let { id -> selectedCategory = categories.find { it.id == id } }
             cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
         },
         isError = showErrors && !validation.counterpartyValid
@@ -169,11 +169,11 @@ internal class CounterpartySaveController<T> {
         entity: T,
         name: String,
         counterparties: List<Counterparty>,
-        category: String,
+        categoryId: Int?,
         accountId: Int?,
         onSave: (T, CounterpartyChoice) -> Unit
     ) {
-        when (val res = counterpartyChoiceFor(name, counterparties, category, accountId)) {
+        when (val res = counterpartyChoiceFor(name, counterparties, categoryId, accountId)) {
             is CounterpartyResolution.Ready -> onSave(entity, res.choice)
             is CounterpartyResolution.NeedsPrompt -> pending = entity to res.existing
         }

@@ -73,6 +73,7 @@
     <!-- %1$s aktif para birimi simgesidir -->
     <string name="form_amount">Tutar (%1$s)</string>
     <string name="form_category">Kategori</string>
+    <string name="uncategorized">Kategorisiz</string>
     <string name="form_account_optional">Hesap (isteğe bağlı)</string>
     <string name="form_account">Hesap</string>
     <string name="form_counterparty">Karşı Taraf</string>

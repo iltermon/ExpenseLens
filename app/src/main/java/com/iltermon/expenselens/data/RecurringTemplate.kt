@@ -9,7 +9,7 @@ data class RecurringTemplate(
     val id: Int = 0,
     val description: String,
     val amount: Double,
-    val category: String,
+    val categoryId: Int? = null,
     val startDate: String,         // format: "YYYY-MM-DD" — anchor for occurrence generation
     val endDate: String?,          // format: "YYYY-MM-DD"; null = open-ended
     val isExpense: Boolean,
