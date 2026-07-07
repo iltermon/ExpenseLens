@@ -159,6 +159,20 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         .map { list -> list.filter { it.type == null || it.type == "income" } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
+    // Active-only variants for the NEW-transaction pickers. Edit screens, Analytics and Settings keep
+    // the unfiltered flows above so disabled accounts/categories stay visible on existing data.
+    val activeAccounts: StateFlow<List<Account>> = repository.getAllAccounts()
+        .map { list -> list.filter { it.active } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val activeExpenseCategories: StateFlow<List<Category>> = repository.getAllCategories()
+        .map { list -> list.filter { it.active && (it.type == null || it.type == "expense") } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val activeIncomeCategories: StateFlow<List<Category>> = repository.getAllCategories()
+        .map { list -> list.filter { it.active && (it.type == null || it.type == "income") } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
@@ -401,8 +415,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.updateCounterparty(counterparty) }
     }
 
-    fun deleteCounterparty(counterparty: Counterparty) {
-        viewModelScope.launch { repository.deleteCounterparty(counterparty) }
+    /** Delete a counterparty, moving its references to [reassignTo] or nulling them when null. */
+    fun deleteCounterparty(counterparty: Counterparty, reassignTo: Counterparty?) {
+        launchBusy {
+            if (reassignTo != null) repository.mergeCounterparties(counterparty, reassignTo)
+            else repository.deleteCounterparty(counterparty)
+        }
     }
 
     fun mergeCounterparties(source: Counterparty, target: Counterparty) {
@@ -437,16 +455,35 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.insertAccount(account) }
     }
 
-    fun deleteAccount(account: Account) {
-        viewModelScope.launch { repository.deleteAccount(account) }
+    fun updateAccount(account: Account) {
+        viewModelScope.launch { repository.updateAccount(account) }
+    }
+
+    fun toggleAccountActive(account: Account) {
+        viewModelScope.launch { repository.updateAccount(account.copy(active = !account.active)) }
+    }
+
+    /** Delete an account, moving its references to [reassignTo] or nulling them when null. */
+    fun deleteAccount(account: Account, reassignTo: Account?) {
+        launchBusy { repository.deleteAccount(account, reassignTo) }
     }
 
     fun insertCategory(category: Category) {
         viewModelScope.launch { repository.insertCategory(category) }
     }
 
-    fun deleteCategory(category: Category) {
-        viewModelScope.launch { repository.deleteCategory(category) }
+    /** Persist an edited category; a rename cascades to transactions/templates/counterparty defaults. */
+    fun updateCategory(old: Category, new: Category) {
+        launchBusy { repository.updateCategory(old, new) }
+    }
+
+    fun toggleCategoryActive(category: Category) {
+        viewModelScope.launch { repository.updateCategory(category, category.copy(active = !category.active)) }
+    }
+
+    /** Delete a category, moving its transactions/templates to the mandatory [reassignTo]. */
+    fun deleteCategory(category: Category, reassignTo: Category) {
+        launchBusy { repository.deleteCategory(category, reassignTo) }
     }
 
     // Dev-only: one-time import of the user's ExpenseLens.xlsx (Settings → Developer Options).

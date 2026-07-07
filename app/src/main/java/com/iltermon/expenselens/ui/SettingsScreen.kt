@@ -3,32 +3,20 @@ package com.iltermon.expenselens.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -41,20 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
-import com.iltermon.expenselens.data.Account
-import com.iltermon.expenselens.data.Category
-import com.iltermon.expenselens.data.Counterparty
 import java.util.Locale
-
-private val accountTypes = listOf("Debit", "Credit Card", "Investment", "Cash", "Savings")
 
 // Currency symbols the user can pick (display only). Paired with their label resource.
 private val currencyOptions = listOf(
@@ -65,20 +46,16 @@ private val currencyOptions = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: ExpenseLensViewModel, onChangeLanguage: (String) -> Unit) {
-    val accounts by viewModel.accounts.collectAsState()
-    val categories by viewModel.allCategories.collectAsState()
-    val counterparties by viewModel.counterparties.collectAsState()
+fun SettingsScreen(
+    viewModel: ExpenseLensViewModel,
+    onChangeLanguage: (String) -> Unit,
+    onOpenAccounts: () -> Unit,
+    onOpenCategories: () -> Unit,
+    onOpenCounterparties: () -> Unit,
+    onOpenTemplates: () -> Unit
+) {
     val currencySymbol by viewModel.currencySymbol.collectAsState()
-
-    var showAddAccountDialog by remember { mutableStateOf(false) }
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var showAddCounterpartyDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
-    var editLimitAccount by remember { mutableStateOf<Account?>(null) }
-    var editLimitCategory by remember { mutableStateOf<Category?>(null) }
-    var editCounterparty by remember { mutableStateOf<Counterparty?>(null) }
-    var mergeCounterparty by remember { mutableStateOf<Counterparty?>(null) }
 
     val context = LocalContext.current
     val importStatus by viewModel.importStatus.collectAsState()
@@ -89,9 +66,7 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel, onChangeLanguage: (String) -
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_settings)) }) }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding)
-        ) {
+        LazyColumn(modifier = Modifier.padding(padding)) {
             item {
                 PreferencesSection(
                     currencySymbol = currencySymbol,
@@ -100,49 +75,11 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel, onChangeLanguage: (String) -
                     onLanguageSelected = onChangeLanguage
                 )
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(24.dp))
             }
-            item {
-                SectionHeader(title = stringResource(R.string.settings_accounts), onAdd = { showAddAccountDialog = true })
-                HorizontalDivider()
-            }
-            items(accounts) { account ->
-                AccountRow(
-                    account = account,
-                    onEditLimit = { editLimitAccount = account },
-                    onDelete = { viewModel.deleteAccount(account) }
-                )
-                HorizontalDivider()
-            }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item {
-                SectionHeader(title = stringResource(R.string.settings_categories), onAdd = { showAddCategoryDialog = true })
-                HorizontalDivider()
-            }
-            items(categories) { category ->
-                CategoryRow(
-                    category = category,
-                    onEditLimit = { editLimitCategory = category },
-                    onDelete = { viewModel.deleteCategory(category) }
-                )
-                HorizontalDivider()
-            }
-
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item {
-                SectionHeader(title = stringResource(R.string.settings_counterparties), onAdd = { showAddCounterpartyDialog = true })
-                HorizontalDivider()
-            }
-            items(counterparties) { counterparty ->
-                CounterpartyRow(
-                    counterparty = counterparty,
-                    accounts = accounts,
-                    onEdit = { editCounterparty = counterparty },
-                    onMerge = { mergeCounterparty = counterparty },
-                    onDelete = { viewModel.deleteCounterparty(counterparty) }
-                )
-                HorizontalDivider()
-            }
+            item { SettingsMenuRow(title = stringResource(R.string.settings_accounts), onClick = onOpenAccounts); HorizontalDivider() }
+            item { SettingsMenuRow(title = stringResource(R.string.settings_categories), onClick = onOpenCategories); HorizontalDivider() }
+            item { SettingsMenuRow(title = stringResource(R.string.settings_counterparties), onClick = onOpenCounterparties); HorizontalDivider() }
+            item { SettingsMenuRow(title = stringResource(R.string.settings_templates), onClick = onOpenTemplates); HorizontalDivider() }
 
             item { Spacer(modifier = Modifier.height(24.dp)) }
             item {
@@ -178,90 +115,6 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel, onChangeLanguage: (String) -
         }
     }
 
-    if (showAddAccountDialog) {
-        AddAccountDialog(
-            onDismiss = { showAddAccountDialog = false },
-            onConfirm = { account ->
-                viewModel.insertAccount(account)
-                showAddAccountDialog = false
-            }
-        )
-    }
-
-    if (showAddCategoryDialog) {
-        AddCategoryDialog(
-            onDismiss = { showAddCategoryDialog = false },
-            onConfirm = { category ->
-                viewModel.insertCategory(category)
-                showAddCategoryDialog = false
-            }
-        )
-    }
-
-    if (showAddCounterpartyDialog) {
-        CounterpartyDialog(
-            initial = null,
-            categories = categories,
-            accounts = accounts,
-            onDismiss = { showAddCounterpartyDialog = false },
-            onConfirm = { counterparty ->
-                viewModel.insertCounterparty(counterparty)
-                showAddCounterpartyDialog = false
-            }
-        )
-    }
-
-    editCounterparty?.let { counterparty ->
-        CounterpartyDialog(
-            initial = counterparty,
-            categories = categories,
-            accounts = accounts,
-            onDismiss = { editCounterparty = null },
-            onConfirm = { updated ->
-                viewModel.updateCounterparty(updated)
-                editCounterparty = null
-            }
-        )
-    }
-
-    mergeCounterparty?.let { source ->
-        MergeCounterpartyDialog(
-            source = source,
-            others = counterparties.filter { it.id != source.id },
-            onDismiss = { mergeCounterparty = null },
-            onConfirm = { target ->
-                viewModel.mergeCounterparties(source, target)
-                mergeCounterparty = null
-            }
-        )
-    }
-
-    editLimitAccount?.let { account ->
-        LimitsDialog(
-            title = stringResource(R.string.limit_dialog_title, account.name),
-            currentMonthly = account.limitMonthly,
-            currentYearly = account.limitYearly,
-            onDismiss = { editLimitAccount = null },
-            onConfirm = { monthly, yearly ->
-                viewModel.insertAccount(account.copy(limitMonthly = monthly, limitYearly = yearly))
-                editLimitAccount = null
-            }
-        )
-    }
-
-    editLimitCategory?.let { category ->
-        LimitsDialog(
-            title = stringResource(R.string.limit_dialog_title, category.name),
-            currentMonthly = category.limitMonthly,
-            currentYearly = category.limitYearly,
-            onDismiss = { editLimitCategory = null },
-            onConfirm = { monthly, yearly ->
-                viewModel.insertCategory(category.copy(limitMonthly = monthly, limitYearly = yearly))
-                editLimitCategory = null
-            }
-        )
-    }
-
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
@@ -280,7 +133,6 @@ fun SettingsScreen(viewModel: ExpenseLensViewModel, onChangeLanguage: (String) -
             }
         )
     }
-
 }
 
 /** Renders an [ImportStatus] in the user's language. */
@@ -368,425 +220,4 @@ private fun SettingDropdown(
             }
         }
     }
-}
-
-@Composable
-private fun SectionHeader(title: String, onAdd: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        IconButton(onClick = onAdd) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_section, title))
-        }
-    }
-}
-
-@Composable
-private fun AccountRow(account: Account, onEditLimit: () -> Unit, onDelete: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = account.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            Text(text = accountTypeLabel(account.type), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LimitSubtitle(account.limitMonthly, account.limitYearly)
-        }
-        IconButton(onClick = onEditLimit) {
-            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_set_account_limit))
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete_account))
-        }
-    }
-}
-
-@Composable
-private fun CategoryRow(category: Category, onEditLimit: () -> Unit, onDelete: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = category.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            Text(text = categoryTypeLabel(category.type), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LimitSubtitle(category.limitMonthly, category.limitYearly)
-        }
-        IconButton(onClick = onEditLimit) {
-            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.cd_set_category_limit))
-        }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete_category))
-        }
-    }
-}
-
-/** Maps the stored category type (null/"expense"/"income") to its localized label. */
-@Composable
-private fun categoryTypeLabel(type: String?): String = when (type) {
-    "expense" -> stringResource(R.string.category_type_expense_only)
-    "income" -> stringResource(R.string.category_type_income_only)
-    else -> stringResource(R.string.category_type_both)
-}
-
-@Composable
-private fun LimitSubtitle(limitMonthly: Double?, limitYearly: Double?) {
-    if (limitMonthly == null && limitYearly == null) return
-    val parts = mutableListOf<String>()
-    if (limitMonthly != null) parts.add(stringResource(R.string.limit_per_month, money(limitMonthly, 0)))
-    if (limitYearly != null) parts.add(stringResource(R.string.limit_per_year, money(limitYearly, 0)))
-    Text(
-        text = stringResource(R.string.limit_subtitle, parts.joinToString(stringResource(R.string.limit_separator))),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LimitsDialog(
-    title: String,
-    currentMonthly: Double?,
-    currentYearly: Double?,
-    onDismiss: () -> Unit,
-    onConfirm: (monthly: Double?, yearly: Double?) -> Unit
-) {
-    var monthly by remember { mutableStateOf(currentMonthly?.let { "%.2f".format(it) } ?: "") }
-    var yearly by remember { mutableStateOf(currentYearly?.let { "%.2f".format(it) } ?: "") }
-    val currencySymbol = LocalCurrencySymbol.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = monthly,
-                    onValueChange = { monthly = it },
-                    label = { Text(stringResource(R.string.limit_monthly_field, currencySymbol)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = yearly,
-                    onValueChange = { yearly = it },
-                    label = { Text(stringResource(R.string.limit_yearly_field, currencySymbol)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    stringResource(R.string.limit_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                onConfirm(monthly.trim().toDoubleOrNull(), yearly.trim().toDoubleOrNull())
-            }) { Text(stringResource(R.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddAccountDialog(onDismiss: () -> Unit, onConfirm: (Account) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(accountTypes.first()) }
-    var typeExpanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.account_add_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.account_name_field)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = accountTypeLabel(type),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.field_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        accountTypes.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(accountTypeLabel(option)) },
-                                onClick = { type = option; typeExpanded = false }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(Account(name = name.trim(), type = type)) },
-                enabled = name.isNotBlank()
-            ) { Text(stringResource(R.string.action_add)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun AddCategoryDialog(onDismiss: () -> Unit, onConfirm: (Category) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf<String?>(null) }
-    var typeExpanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.category_add_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.category_name_field)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = categoryTypeLabel(type),
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.category_appears_in)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        DropdownMenuItem(text = { Text(stringResource(R.string.category_type_both)) }, onClick = { type = null; typeExpanded = false })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.category_type_expense_only)) }, onClick = { type = "expense"; typeExpanded = false })
-                        DropdownMenuItem(text = { Text(stringResource(R.string.category_type_income_only)) }, onClick = { type = "income"; typeExpanded = false })
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(Category(name = name.trim(), type = type)) },
-                enabled = name.isNotBlank()
-            ) { Text(stringResource(R.string.action_add)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
-}
-
-@Composable
-private fun CounterpartyRow(
-    counterparty: Counterparty,
-    accounts: List<Account>,
-    onEdit: () -> Unit,
-    onMerge: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val subtitle = buildList {
-        counterparty.defaultCategory?.let { add(it) }
-        counterparty.defaultAccountId?.let { id -> accounts.find { it.id == id }?.let { add(it.name) } }
-    }.joinToString(stringResource(R.string.limit_separator))
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = counterparty.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-            if (subtitle.isNotEmpty()) {
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_edit_counterparty))
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.cd_edit_counterparty)) },
-                    onClick = { menuOpen = false; onEdit() }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.cd_merge_counterparty)) },
-                    onClick = { menuOpen = false; onMerge() }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.action_delete)) },
-                    onClick = { menuOpen = false; onDelete() }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CounterpartyDialog(
-    initial: Counterparty?,
-    categories: List<Category>,
-    accounts: List<Account>,
-    onDismiss: () -> Unit,
-    onConfirm: (Counterparty) -> Unit
-) {
-    var name by remember { mutableStateOf(initial?.name ?: "") }
-    var defaultCategory by remember { mutableStateOf(initial?.defaultCategory) }
-    var defaultAccountId by remember { mutableStateOf(initial?.defaultAccountId) }
-    var catExpanded by remember { mutableStateOf(false) }
-    var accExpanded by remember { mutableStateOf(false) }
-    val noneLabel = stringResource(R.string.action_none)
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(if (initial == null) R.string.counterparty_add_title else R.string.counterparty_edit_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.counterparty_name_field)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = !catExpanded }) {
-                    OutlinedTextField(
-                        value = defaultCategory ?: noneLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.counterparty_default_category)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
-                        DropdownMenuItem(text = { Text(noneLabel) }, onClick = { defaultCategory = null; catExpanded = false })
-                        categories.forEach { c ->
-                            DropdownMenuItem(text = { Text(c.name) }, onClick = { defaultCategory = c.name; catExpanded = false })
-                        }
-                    }
-                }
-                ExposedDropdownMenuBox(expanded = accExpanded, onExpandedChange = { accExpanded = !accExpanded }) {
-                    OutlinedTextField(
-                        value = accounts.find { it.id == defaultAccountId }?.let { accountWithType(it.name, it.type) } ?: noneLabel,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.counterparty_default_account)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = accExpanded, onDismissRequest = { accExpanded = false }) {
-                        DropdownMenuItem(text = { Text(noneLabel) }, onClick = { defaultAccountId = null; accExpanded = false })
-                        accounts.forEach { a ->
-                            DropdownMenuItem(text = { Text(accountWithType(a.name, a.type)) }, onClick = { defaultAccountId = a.id; accExpanded = false })
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(
-                            (initial ?: Counterparty(name = "")).copy(
-                                name = name.trim(),
-                                defaultCategory = defaultCategory,
-                                defaultAccountId = defaultAccountId
-                            )
-                        )
-                    }
-                },
-                enabled = name.isNotBlank()
-            ) { Text(stringResource(if (initial == null) R.string.action_add else R.string.action_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MergeCounterpartyDialog(
-    source: Counterparty,
-    others: List<Counterparty>,
-    onDismiss: () -> Unit,
-    onConfirm: (Counterparty) -> Unit
-) {
-    var target by remember { mutableStateOf<Counterparty?>(null) }
-    var expanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.counterparty_merge_title)) },
-        text = {
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-                OutlinedTextField(
-                    value = target?.name ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(source.name) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
-                )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    others.forEach { cp ->
-                        DropdownMenuItem(text = { Text(cp.name) }, onClick = { target = cp; expanded = false })
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { target?.let(onConfirm) }, enabled = target != null) {
-                Text(stringResource(R.string.action_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        }
-    )
 }

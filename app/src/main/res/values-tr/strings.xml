@@ -13,6 +13,42 @@
     <string name="action_none">Yok</string>
     <string name="action_yes">Evet</string>
     <string name="action_no">Hayır</string>
+    <string name="action_discard">Yoksay</string>
+
+    <!-- Unsaved-changes confirmation on back -->
+    <string name="discard_changes_title">Kaydedilmemiş değişiklikler</string>
+    <string name="discard_changes_message">Kaydedilmemiş değişiklikleriniz var. Çıkmadan önce kaydedilsin mi?</string>
+
+    <!-- Ayarlar yönetimi -->
+    <string name="settings_templates">Şablonlar</string>
+    <string name="action_edit">Düzenle</string>
+    <string name="action_enable">Etkinleştir</string>
+    <string name="action_disable">Devre dışı bırak</string>
+    <string name="status_disabled">Devre dışı</string>
+    <string name="account_edit_title">Hesabı düzenle</string>
+    <string name="category_edit_title">Kategoriyi düzenle</string>
+    <string name="cd_manage_account">%1$s hesabını yönet</string>
+    <string name="cd_manage_category">%1$s kategorisini yönet</string>
+
+    <!-- Sil + taşı iletişim kutusu -->
+    <string name="delete_account_title">“%1$s” silinsin mi?</string>
+    <string name="delete_account_message">İşlemlerinin nereye taşınacağını seçin veya atanmamış bırakın.</string>
+    <string name="delete_category_title">“%1$s” silinsin mi?</string>
+    <string name="delete_category_message">İşlemlerinin taşınacağı bir kategori seçin.</string>
+    <string name="delete_counterparty_title">“%1$s” silinsin mi?</string>
+    <string name="delete_counterparty_message">İşlemlerinin nereye taşınacağını seçin veya atanmamış bırakın.</string>
+    <string name="delete_move_to_label">Şuraya taşı</string>
+    <string name="delete_leave_unassigned">Atanmamış bırak</string>
+    <string name="delete_reassign_required_hint">Kategori zorunludur; işlemleri başka bir kategoriye taşınmalıdır.</string>
+
+    <!-- Şablon yönetimi -->
+    <string name="templates_filter_all">Tümü</string>
+    <string name="templates_filter_active">Etkin</string>
+    <string name="templates_filter_inactive">Bitmiş</string>
+    <string name="template_status_active">Etkin</string>
+    <string name="template_status_ended">Bitmiş</string>
+    <string name="template_delete_title">Şablon silinsin mi?</string>
+    <string name="template_delete_message">“%1$s” ve oluşturduğu tüm işlemler silinsin mi? Bu geri alınamaz.</string>
 
     <!-- Bottom navigation / screen titles -->
     <string name="nav_expenses">Giderler</string>
@@ -41,7 +77,7 @@
     <string name="form_account">Hesap</string>
     <string name="form_counterparty">Karşı Taraf</string>
     <!-- %1$s kullanıcının yazdığıdır -->
-    <string name="counterparty_add_new">\"%1$s\" ekle</string>
+    <string name="counterparty_add_new">Ekle: \"%1$s\"</string>
     <string name="counterparty_did_you_mean">Bunu mu demek istediniz?</string>
     <string name="counterparty_update_defaults_title">Varsayılanlar güncellensin mi?</string>
     <!-- %1$s karşı taraf adıdır -->
@@ -83,6 +119,8 @@
     <string name="unit_plural_year">yıl</string>
     <!-- Satırdaki tekrar etiketi için ↻ öneki -->
     <string name="recurring_frequency_prefix">↻ %1$s</string>
+    <!-- Sonlu bir tekrar serisi bitene kadar kalan tekrar sayısı, sıklığın yanında gösterilir -->
+    <string name="recurring_remaining">%1$d kaldı</string>
 
     <!-- Expenses tab -->
     <string name="expenses_this_month">Gider</string>

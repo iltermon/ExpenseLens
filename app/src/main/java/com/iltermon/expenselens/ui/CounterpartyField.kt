@@ -5,6 +5,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -68,7 +69,7 @@ internal fun CounterpartyField(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
             isError = isError,
             supportingText = { if (isError) Text(stringResource(R.string.field_required)) },
-            modifier = modifier.menuAnchor().fillMaxWidth()
+            modifier = modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = expanded && hasMenu, onDismissRequest = { expanded = false }) {
             contains.forEach { cp ->

@@ -11,6 +11,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.RecurringTemplate
+import com.iltermon.expenselens.data.occurrencesInRange
+import java.time.LocalDate
 
 /**
  * One list row: swipe-to-reveal delete plus tap-to-edit, with the recurring-vs-one-time routing
@@ -30,10 +32,18 @@ fun ExpenseItemRow(
     templates: List<RecurringTemplate>,
     viewModel: ExpenseLensViewModel,
     onEditTransaction: (Int) -> Unit,
-    onEditTemplate: (Int) -> Unit
+    onEditTemplate: (Int) -> Unit,
+    counterpartyNames: Map<Int, String> = emptyMap()
 ) {
     val template = item.templateId?.let { tid -> templates.find { it.id == tid } }
     var showDelete by remember { mutableStateOf(false) }
+
+    // Occurrences left in a finite series, counting this row's occurrence through the end date
+    // (inclusive). Open-ended templates have no finite count, so nothing is shown.
+    val remainingOccurrences = template?.endDate?.let { end ->
+        template.occurrencesInRange(LocalDate.parse(item.date), LocalDate.parse(end)).size
+            .takeIf { it > 0 }
+    }
 
     SwipeToRevealRow(onDelete = { showDelete = true }) {
         ExpenseItemCard(
@@ -42,7 +52,9 @@ fun ExpenseItemRow(
             onClick = {
                 if (template != null) onEditTemplate(template.id)
                 else item.transactionId?.let(onEditTransaction)
-            }
+            },
+            counterpartyName = item.counterpartyId?.let { counterpartyNames[it] },
+            remainingOccurrences = remainingOccurrences
         )
     }
 

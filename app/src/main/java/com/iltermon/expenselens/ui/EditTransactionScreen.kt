@@ -44,30 +44,33 @@ fun EditTransactionScreen(
     val t = original
     val categories = if (t?.isExpense == false) incomeCategories else expenseCategories
 
-    LaunchedEffect(t, categories, accounts) {
+    // Seed every field in one pass so `prefilled` implies the baseline is complete — including the
+    // counterparty, which may resolve a frame later than the categories/accounts lists load.
+    LaunchedEffect(t, categories, accounts, counterparties) {
         if (t != null && !prefilled && categories.isNotEmpty()) {
+            val cp = t.counterpartyId?.let { id -> counterparties.find { it.id == id } }
+            if (t.counterpartyId != null && cp == null) return@LaunchedEffect
             shared.description = t.description
             shared.amount = formatAmount(t.amount)
             shared.selectedCategory = categories.find { it.name == t.category }
             shared.selectedAccount = t.accountId?.let { id -> accounts.find { it.id == id } }
+            if (cp != null) {
+                shared.selectedCounterparty = cp
+                shared.counterpartyName = cp.name
+            }
             prefilled = true
         }
     }
 
-    // Resolve the linked counterparty once the list is available (may load after the fields above).
-    LaunchedEffect(t, counterparties) {
-        val cp = t?.counterpartyId?.let { id -> counterparties.find { it.id == id } }
-        if (cp != null && shared.selectedCounterparty == null) {
-            shared.selectedCounterparty = cp
-            shared.counterpartyName = cp.name
-        }
-    }
+    val gate = rememberFormBackGate()
+    val sharedBaseline = rememberSharedBaseline(shared, ready = prefilled)
+    val onBack = rememberUnsavedChangesBackGuard(gate, onNavigateBack)
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.edit_transaction_title)) },
-                navigationIcon = { BackButton(onClick = onNavigateBack) }
+                navigationIcon = { BackButton(onClick = onBack) }
             )
         }
     ) { padding ->
@@ -90,6 +93,8 @@ fun EditTransactionScreen(
                     initialIsPaid = t.isPaid,
                     counterparties = counterparties,
                     saveLabel = stringResource(R.string.action_update),
+                    gate = gate,
+                    sharedBaseline = sharedBaseline,
                     onSave = { edited, choice ->
                         viewModel.updateTransaction(edited.copy(id = t.id, templateId = t.templateId), choice)
                         onNavigateBack()

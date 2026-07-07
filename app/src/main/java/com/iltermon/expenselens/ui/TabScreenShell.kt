@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
@@ -64,8 +65,6 @@ fun TabScreenShell(
     val dateRange by viewModel.dateRange.collectAsState()
     val isCustomRange by viewModel.isCustomRange.collectAsState()
     var showRangePicker by remember { mutableStateOf(false) }
-
-    val titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
     if (showRangePicker) {
         DateRangePickerDialog(
@@ -131,15 +130,44 @@ private fun MonthSelectorRow(
     onCurrentTapped: () -> Unit,
     onClearRange: () -> Unit
 ) {
-    val prevMonth = selectedMonth.minusMonths(1)
-    val nextMonth = selectedMonth.plusMonths(1)
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp, vertical = 8.dp)
+
+    // A custom range filter is not month-based, so the month steppers are dropped and the filter
+    // takes the full width as its own banner.
+    if (isCustomRange) {
+        ActiveFilterBar(
+            dateRange = dateRange,
+            onTapped = onCurrentTapped,
+            onClear = onClearRange,
+            modifier = rowModifier
+        )
+    } else {
+        MonthStepperRow(
+            selectedMonth = selectedMonth,
+            onPrevious = onPrevious,
+            onNext = onNext,
+            onCurrentTapped = onCurrentTapped,
+            modifier = rowModifier
+        )
+    }
+}
+
+/** Month mode: step to the previous/next month with the current month tappable in the middle. */
+@Composable
+private fun MonthStepperRow(
+    selectedMonth: YearMonth,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onCurrentTapped: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val monthFormatter = DateTimeFormatter.ofPattern("MMM")
     val titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
-    val rangeFormatter = DateTimeFormatter.ofPattern("d MMM")
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -150,37 +178,68 @@ private fun MonthSelectorRow(
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(4.dp))
-            Text(prevMonth.format(DateTimeFormatter.ofPattern("MMM")))
+            Text(selectedMonth.minusMonths(1).format(monthFormatter))
         }
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onCurrentTapped, shape = RoundedCornerShape(50)) {
-                Text(
-                    if (isCustomRange)
-                        "${dateRange.start.format(rangeFormatter)} – ${dateRange.end.format(rangeFormatter)}"
-                    else
-                        selectedMonth.format(titleFormatter),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (isCustomRange) {
-                IconButton(onClick = onClearRange) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(R.string.action_clear)
-                    )
-                }
-            }
+        Button(onClick = onCurrentTapped, shape = RoundedCornerShape(50)) {
+            Text(selectedMonth.format(titleFormatter), fontWeight = FontWeight.Bold)
         }
 
         OutlinedButton(onClick = onNext, shape = RoundedCornerShape(50)) {
-            Text(nextMonth.format(DateTimeFormatter.ofPattern("MMM")))
+            Text(selectedMonth.plusMonths(1).format(monthFormatter))
             Spacer(Modifier.width(4.dp))
             Icon(
                 Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp)
             )
+        }
+    }
+}
+
+/** Filter mode: a full-width banner showing the active custom date range, tappable to re-pick. */
+@Composable
+private fun ActiveFilterBar(
+    dateRange: DateRange,
+    onTapped: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val rangeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+
+    Surface(
+        onClick = onTapped,
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.DateRange, contentDescription = null)
+                Text(
+                    "${dateRange.start.format(rangeFormatter)} – ${dateRange.end.format(rangeFormatter)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            IconButton(onClick = onClear) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.action_clear)
+                )
+            }
         }
     }
 }
@@ -269,6 +328,26 @@ fun DateRangePickerDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } }
     ) {
-        DateRangePicker(state = state, modifier = Modifier.weight(1f))
+        val headlineFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+        DateRangePicker(
+            state = state,
+            modifier = Modifier.weight(1f),
+            // Drop the default "Select dates" title entirely.
+            title = null,
+            // Smaller headline than the default large one; reuse the localized field labels as placeholders.
+            headline = {
+                val start = state.selectedStartDateMillis
+                    ?.let { LocalDate.ofEpochDay(it / 86400000).format(headlineFormatter) }
+                    ?: stringResource(R.string.form_start_date)
+                val end = state.selectedEndDateMillis
+                    ?.let { LocalDate.ofEpochDay(it / 86400000).format(headlineFormatter) }
+                    ?: stringResource(R.string.form_end_date)
+                Text(
+                    "$start – $end",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+                )
+            }
+        )
     }
 }
