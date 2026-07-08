@@ -157,6 +157,7 @@ internal fun RecurringForm(
                 value = frequencyInterval,
                 onValueChange = { if (it.length <= 3) frequencyInterval = it.filter { c -> c.isDigit() } },
                 label = { Text(stringResource(R.string.form_frequency)) },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.width(100.dp)
             )

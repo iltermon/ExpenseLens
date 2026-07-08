@@ -163,10 +163,29 @@ private fun CategoryDialog(initial: Category?, onDismiss: () -> Unit, onConfirm:
     var typeExpanded by remember { mutableStateOf(false) }
     var monthly by remember { mutableStateOf(initial?.limitMonthly?.let { "%.2f".format(it) } ?: "") }
     var yearly by remember { mutableStateOf(initial?.limitYearly?.let { "%.2f".format(it) } ?: "") }
+    var showDiscard by remember { mutableStateOf(false) }
     val currencySymbol = LocalCurrencySymbol.current
 
+    fun save() {
+        if (name.isNotBlank()) {
+            onConfirm(
+                (initial ?: Category(name = "", type = type)).copy(
+                    name = name.trim(),
+                    type = type,
+                    limitMonthly = monthly.trim().toDoubleOrNull(),
+                    limitYearly = yearly.trim().toDoubleOrNull()
+                )
+            )
+        }
+    }
+
+    val isDirty = name != (initial?.name ?: "") ||
+        type != initial?.type ||
+        monthly != (initial?.limitMonthly?.let { "%.2f".format(it) } ?: "") ||
+        yearly != (initial?.limitYearly?.let { "%.2f".format(it) } ?: "")
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (isDirty) showDiscard = true else onDismiss() },
         title = { Text(stringResource(if (initial == null) R.string.category_add_title else R.string.category_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -213,18 +232,7 @@ private fun CategoryDialog(initial: Category?, onDismiss: () -> Unit, onConfirm:
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(
-                            (initial ?: Category(name = "", type = type)).copy(
-                                name = name.trim(),
-                                type = type,
-                                limitMonthly = monthly.trim().toDoubleOrNull(),
-                                limitYearly = yearly.trim().toDoubleOrNull()
-                            )
-                        )
-                    }
-                },
+                onClick = { save() },
                 enabled = name.isNotBlank()
             ) { Text(stringResource(if (initial == null) R.string.action_add else R.string.action_save)) }
         },
@@ -232,4 +240,12 @@ private fun CategoryDialog(initial: Category?, onDismiss: () -> Unit, onConfirm:
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
+
+    if (showDiscard) {
+        UnsavedChangesDialog(
+            onSave = { showDiscard = false; save() },
+            onDiscard = { showDiscard = false; onDismiss() },
+            onCancel = { showDiscard = false }
+        )
+    }
 }
