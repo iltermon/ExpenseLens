@@ -102,7 +102,7 @@ fun rememberUnsavedChangesBackGuard(
 }
 
 @Composable
-private fun UnsavedChangesDialog(
+internal fun UnsavedChangesDialog(
     onSave: () -> Unit,
     onDiscard: () -> Unit,
     onCancel: () -> Unit

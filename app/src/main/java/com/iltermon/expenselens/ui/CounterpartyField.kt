@@ -66,6 +66,7 @@ internal fun CounterpartyField(
                 expanded = true
             },
             label = { Text(stringResource(R.string.form_counterparty)) },
+            singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
             isError = isError,
             supportingText = { if (isError) Text(stringResource(R.string.field_required)) },

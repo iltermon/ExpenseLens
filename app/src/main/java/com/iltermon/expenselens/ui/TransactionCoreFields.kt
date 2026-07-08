@@ -54,6 +54,7 @@ internal fun TransactionCoreFields(
         value = description,
         onValueChange = { description = it },
         label = { Text(stringResource(R.string.form_description)) },
+        singleLine = true,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         isError = showErrors && !validation.descriptionValid,
         supportingText = { if (showErrors && !validation.descriptionValid) Text(stringResource(R.string.field_required)) },
@@ -63,6 +64,7 @@ internal fun TransactionCoreFields(
         value = amount,
         onValueChange = { amount = sanitizeAmountInput(it) },
         label = { Text(stringResource(R.string.form_amount, LocalCurrencySymbol.current)) },
+        singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         isError = showErrors && !validation.amountValid,
         supportingText = { if (showErrors && !validation.amountValid) Text(stringResource(R.string.amount_invalid)) },
@@ -75,8 +77,9 @@ internal fun TransactionCoreFields(
         onCounterpartySelected = { cp ->
             selectedCounterparty = cp
             counterpartyName = cp.name
-            cp.defaultCategoryId?.let { id -> selectedCategory = categories.find { it.id == id } }
-            cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
+            // Only prefill fields the user hasn't already set, so a counterparty's defaults never clobber input.
+            if (selectedCategory == null) cp.defaultCategoryId?.let { id -> selectedCategory = categories.find { it.id == id } }
+            if (selectedAccount == null) cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
         },
         isError = showErrors && !validation.counterpartyValid
     )
