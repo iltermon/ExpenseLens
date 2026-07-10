@@ -1,7 +1,9 @@
 package com.iltermon.expenselens.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,8 +11,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,7 +37,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,9 +48,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.RecurringTemplate
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 private enum class TemplateFilter { ALL, ACTIVE, INACTIVE }
+
+/** Keys offered when sorting templates (category/counterparty aren't meaningful here). DATE = start date. */
+private val templateSortKeys = listOf(SortKey.DESCRIPTION, SortKey.AMOUNT, SortKey.DATE)
 
 /** A template is ended once its (optional) end date is strictly in the past; null = open-ended. */
 internal fun RecurringTemplate.isEnded(today: LocalDate = LocalDate.now()): Boolean =
@@ -54,27 +69,101 @@ fun TemplatesScreen(
     onEditTemplate: (Int) -> Unit
 ) {
     val templates by viewModel.allTemplates.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
+    val allCategories by viewModel.allCategories.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+    val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
     var filter by remember { mutableStateOf(TemplateFilter.ALL) }
+    var sort by remember { mutableStateOf(SortState(SortKey.DESCRIPTION)) }
+    var sortOpen by remember { mutableStateOf(false) }
+    var searchActive by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var advanced by remember { mutableStateOf(ListFilterState()) }
+    var showSheet by remember { mutableStateOf(false) }
     var deleteTemplate by remember { mutableStateOf<RecurringTemplate?>(null) }
 
+    val keyboard = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
+
+    // Exiting search mode clears both the query and the advanced filter (matches the tab screens).
+    fun exitSearch() { searchActive = false; query = ""; advanced = ListFilterState() }
+    // System back exits search mode first, mirroring the app-bar back arrow.
+    BackHandler(enabled = searchActive) { exitSearch() }
+
+    // Dismiss the keyboard before opening the filter sheet so it opens at full height in one step.
+    fun openFilters() { keyboard?.hide(); scope.launch { delay(100); showSheet = true } }
+
     val today = LocalDate.now()
-    val visible = remember(templates, filter) {
+    val visible = remember(templates, filter, sort, query, advanced, counterpartyNames) {
+        val q = query.trim()
+        // Ended templates always sink to the bottom (fixed primary key); the chosen sort orders the rest.
+        val keyCmp: Comparator<RecurringTemplate> = when (sort.key) {
+            SortKey.AMOUNT -> compareBy { it.amount }
+            SortKey.DATE -> compareBy { it.startDate }
+            else -> compareBy { it.description.lowercase() }
+        }
+        val directed = if (sort.ascending) keyCmp else keyCmp.reversed()
         templates
-            .sortedWith(compareBy({ it.isEnded(today) }, { it.description.lowercase() }))
+            .sortedWith(compareBy<RecurringTemplate> { it.isEnded(today) }.then(directed).thenBy { it.id })
             .filter {
-                when (filter) {
+                val matchesFilter = when (filter) {
                     TemplateFilter.ALL -> true
                     TemplateFilter.ACTIVE -> !it.isEnded(today)
                     TemplateFilter.INACTIVE -> it.isEnded(today)
                 }
+                // Search matches description OR counterparty name (mirrors the transaction search).
+                val matchesQuery = q.isBlank() ||
+                    it.description.contains(q, ignoreCase = true) ||
+                    (it.counterpartyId?.let { id -> counterpartyNames[id] }?.contains(q, ignoreCase = true) == true)
+                matchesFilter && matchesQuery &&
+                    advanced.matchesFields(it.categoryId, it.accountId, it.counterpartyId, it.amount)
             }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_templates)) },
-                navigationIcon = { BackButton(onClick = onNavigateBack) }
+                title = {
+                    if (searchActive) {
+                        SearchField(value = query, onValueChange = { query = it })
+                    } else {
+                        Text(stringResource(R.string.settings_templates))
+                    }
+                },
+                navigationIcon = {
+                    if (searchActive) {
+                        IconButton(onClick = { exitSearch() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_search_close))
+                        }
+                    } else {
+                        BackButton(onClick = onNavigateBack)
+                    }
+                },
+                actions = {
+                    if (searchActive) {
+                        BadgedBox(badge = { if (advanced.advancedCount > 0) Badge { Text(advanced.advancedCount.toString()) } }) {
+                            IconButton(onClick = { openFilters() }) {
+                                Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filter_open))
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search_open))
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { sortOpen = true }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort_open))
+                        }
+                        SortMenu(
+                            expanded = sortOpen,
+                            sort = sort,
+                            onSelect = { sort = sort.tapped(it) },
+                            onDismiss = { sortOpen = false },
+                            keys = templateSortKeys
+                        )
+                    }
+                }
             )
         }
     ) { padding ->
@@ -98,18 +187,37 @@ fun TemplatesScreen(
                 }
             }
 
-            LazyColumn {
-                items(visible) { template ->
-                    TemplateRow(
-                        template = template,
-                        ended = template.isEnded(today),
-                        onClick = { onEditTemplate(template.id) },
-                        onDelete = { deleteTemplate = template }
-                    )
-                    HorizontalDivider()
+            if (visible.isEmpty() && (query.isNotBlank() || advanced.isActive)) {
+                NoFilterResults(onClearFilters = { query = ""; advanced = ListFilterState() })
+            } else {
+                LazyColumn {
+                    items(visible) { template ->
+                        TemplateRow(
+                            template = template,
+                            ended = template.isEnded(today),
+                            onClick = { onEditTemplate(template.id) },
+                            onDelete = { deleteTemplate = template }
+                        )
+                        HorizontalDivider()
+                    }
                 }
             }
         }
+    }
+
+    if (showSheet) {
+        FilterBottomSheet(
+            filter = advanced,
+            categories = allCategories,
+            accounts = accounts,
+            counterparties = counterparties,
+            onUpdateFilter = { transform -> advanced = transform(advanced) },
+            onClearFilter = { advanced = ListFilterState() },
+            onDismiss = { showSheet = false },
+            // Templates have no paid/one-time distinction.
+            showStatus = false,
+            showRecurrence = false
+        )
     }
 
     deleteTemplate?.let { template ->

@@ -1,8 +1,11 @@
 package com.iltermon.expenselens.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +16,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
@@ -35,10 +43,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
@@ -59,12 +71,39 @@ fun TabScreenShell(
     rightIsNegative: Boolean = false,
     leftRecurring: Double? = null,
     rightRecurring: Double? = null,
+    // Search + sort wiring (all optional). When these are supplied the top bar grows a Search/Sort
+    // pair and can flip into a full-width search field; screens own the state and clear it on exit.
+    onSearchOpen: (() -> Unit)? = null,
+    searchActive: Boolean = false,
+    searchQuery: String = "",
+    onSearchQueryChange: ((String) -> Unit)? = null,
+    onSearchClose: (() -> Unit)? = null,
+    onOpenFilters: (() -> Unit)? = null,
+    filterBadgeCount: Int = 0,
+    sort: SortState? = null,
+    onSelectSort: ((SortKey) -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val dateRange by viewModel.dateRange.collectAsState()
     val isCustomRange by viewModel.isCustomRange.collectAsState()
     var showRangePicker by remember { mutableStateOf(false) }
+    var sortOpen by remember { mutableStateOf(false) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val scope = rememberCoroutineScope()
+
+    // System back exits search mode first, mirroring the back arrow.
+    BackHandler(enabled = searchActive && onSearchClose != null) { onSearchClose?.invoke() }
+
+    // Opening the filter sheet from search mode: dismiss the keyboard first, then open on the next tick
+    // so the sheet measures at full height in one step instead of half-then-full.
+    val openFilters = onOpenFilters?.let {
+        {
+            keyboard?.hide()
+            scope.launch { delay(100); it() }
+            Unit
+        }
+    }
 
     if (showRangePicker) {
         DateRangePickerDialog(
@@ -76,17 +115,54 @@ fun TabScreenShell(
         )
     }
 
+    // Right-side actions, shared by both modes: (Search | Filter) then Sort then Add.
+    val topActions: @Composable RowScope.() -> Unit = {
+        if (searchActive) {
+            if (openFilters != null) {
+                BadgedBox(badge = { if (filterBadgeCount > 0) Badge { Text(filterBadgeCount.toString()) } }) {
+                    IconButton(onClick = openFilters) {
+                        Icon(Icons.Default.FilterList, contentDescription = stringResource(R.string.filter_open))
+                    }
+                }
+            }
+        } else if (onSearchOpen != null) {
+            IconButton(onClick = onSearchOpen) {
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search_open))
+            }
+        }
+        if (sort != null && onSelectSort != null) {
+            Box {
+                IconButton(onClick = { sortOpen = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort_open))
+                }
+                SortMenu(expanded = sortOpen, sort = sort, onSelect = onSelectSort, onDismiss = { sortOpen = false })
+            }
+        }
+        if (onAdd != null) {
+            IconButton(onClick = onAdd) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_add))
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title) },
-                actions = {
-                    if (onAdd != null) {
-                        IconButton(onClick = onAdd) {
-                            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_add))
+                navigationIcon = {
+                    if (searchActive && onSearchClose != null) {
+                        IconButton(onClick = onSearchClose) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_search_close))
                         }
                     }
-                }
+                },
+                title = {
+                    if (searchActive) {
+                        SearchField(value = searchQuery, onValueChange = { onSearchQueryChange?.invoke(it) })
+                    } else {
+                        Text(title)
+                    }
+                },
+                actions = topActions
             )
         },
         bottomBar = {

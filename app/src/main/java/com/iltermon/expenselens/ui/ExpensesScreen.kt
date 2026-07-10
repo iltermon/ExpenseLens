@@ -23,7 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,13 +43,18 @@ fun ExpensesScreen(
     onEditTransaction: (Int) -> Unit,
     onEditTemplate: (Int) -> Unit
 ) {
-    val expenseItems by viewModel.expenseItems.collectAsState()
+    val items by viewModel.expensesTabItems.collectAsState()
+    val filter by viewModel.expensesFilter.collectAsState()
+    val sort by viewModel.expensesSort.collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
+    val categories by viewModel.expenseCategories.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
     val categoryNames by viewModel.categoryNamesById.collectAsState()
+    var searchActive by remember { mutableStateOf(false) }
+    var showSheet by remember { mutableStateOf(false) }
 
-    val items = expenseItems.filter { it.isExpense }
     val recurringItems = items.filter { it.isRecurring && !it.isPaid }
     val unpaidItems = items.filter { !it.isRecurring && !it.isPaid }
     val paidItems = items.filter { it.isPaid }
@@ -62,52 +69,82 @@ fun ExpensesScreen(
         rightAmount = (recurringItems + unpaidItems).sumOf { it.amount },
         rightIsNegative = true,
         leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
-        rightRecurring = recurringItems.sumOf { it.amount }
+        rightRecurring = recurringItems.sumOf { it.amount },
+        onSearchOpen = { viewModel.clearExpensesFilter(); searchActive = true },
+        searchActive = searchActive,
+        searchQuery = filter.searchQuery,
+        onSearchQueryChange = { q -> viewModel.updateExpensesFilter { it.copy(searchQuery = q) } },
+        onSearchClose = { viewModel.clearExpensesFilter(); searchActive = false },
+        onOpenFilters = { showSheet = true },
+        filterBadgeCount = filter.advancedCount,
+        sort = sort,
+        onSelectSort = viewModel::setExpensesSort
     ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (recurringItems.isNotEmpty()) {
-                item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
-                items(recurringItems) { item ->
+            when {
+                items.isEmpty() -> item {
+                    // Filters only exist inside search mode, so an active filter here means a
+                    // search matched nothing; otherwise the period is genuinely empty.
+                    if (filter.isActive) {
+                        NoFilterResults(onClearFilters = viewModel::clearExpensesFilter)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.no_expenses_for_period))
+                        }
+                    }
+                }
+                // A non-default sort flattens the sections into one ranked list.
+                !sort.isDefault -> items(items) { item ->
                     ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
                 }
-            }
-
-            if (unpaidItems.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = stringResource(R.string.section_to_be_paid), total = unpaidItems.sumOf { it.amount })
-                }
-                items(unpaidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
-                }
-            }
-
-            if (paidItems.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(8.dp))
-                    SectionHeader(title = stringResource(R.string.section_paid), total = paidItems.sumOf { it.amount })
-                }
-                items(paidItems) { item ->
-                    ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
-                }
-            }
-
-            if (items.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(stringResource(R.string.no_expenses_for_period))
+                else -> {
+                    if (recurringItems.isNotEmpty()) {
+                        item { SectionHeader(title = stringResource(R.string.section_recurring), total = recurringItems.sumOf { it.amount }) }
+                        items(recurringItems) { item ->
+                            ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
+                        }
+                    }
+                    if (unpaidItems.isNotEmpty()) {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            SectionHeader(title = stringResource(R.string.section_to_be_paid), total = unpaidItems.sumOf { it.amount })
+                        }
+                        items(unpaidItems) { item ->
+                            ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
+                        }
+                    }
+                    if (paidItems.isNotEmpty()) {
+                        item {
+                            Spacer(Modifier.height(8.dp))
+                            SectionHeader(title = stringResource(R.string.section_paid), total = paidItems.sumOf { it.amount })
+                        }
+                        items(paidItems) { item ->
+                            ExpenseItemRow(item, templates, viewModel, onEditTransaction, onEditTemplate, counterpartyNames, categoryNames)
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showSheet) {
+        FilterBottomSheet(
+            filter = filter,
+            categories = categories,
+            accounts = accounts,
+            counterparties = counterparties,
+            onUpdateFilter = viewModel::updateExpensesFilter,
+            onClearFilter = viewModel::clearExpensesFilter,
+            onDismiss = { showSheet = false }
+        )
     }
 }
 
