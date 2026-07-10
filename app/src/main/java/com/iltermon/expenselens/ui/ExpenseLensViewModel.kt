@@ -274,6 +274,48 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         mergeItems(transactions, templates, range)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
+    // --- Per-tab filter & sort (independent Expenses vs Income), layered on top of the date range.
+    // Held here like _dateRange so state survives tab switches; the pure logic lives in
+    // ExpenseItemFiltering.kt. Applied AFTER mergeItems, so recurring projection/dedup and
+    // analyticsItems are untouched. ---
+    private val _expensesFilter = MutableStateFlow(ListFilterState())
+    val expensesFilter: StateFlow<ListFilterState> = _expensesFilter.asStateFlow()
+    private val _expensesSort = MutableStateFlow(SortState())
+    val expensesSort: StateFlow<SortState> = _expensesSort.asStateFlow()
+    private val _incomeFilter = MutableStateFlow(ListFilterState())
+    val incomeFilter: StateFlow<ListFilterState> = _incomeFilter.asStateFlow()
+    private val _incomeSort = MutableStateFlow(SortState())
+    val incomeSort: StateFlow<SortState> = _incomeSort.asStateFlow()
+
+    // Builds one tab's visible list: keeps only that tab's items (expense vs income) and runs them
+    // through the shared filter + sort pipeline, re-emitting as a StateFlow that the screen collects.
+    private fun buildTabItems(
+        isExpense: Boolean,
+        filter: StateFlow<ListFilterState>,
+        sort: StateFlow<SortState>
+    ): StateFlow<List<ExpenseItem>> = combine(
+        expenseItems, filter, sort, counterparties, categoryNamesById
+    ) { items, f, s, cps, catNames ->
+        applyFilterAndSort(
+            items.filter { it.isExpense == isExpense },
+            f,
+            s,
+            cps.associate { it.id to it.name },
+            catNames
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    val expensesTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(true, _expensesFilter, _expensesSort)
+    val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
+
+    fun updateExpensesFilter(transform: (ListFilterState) -> ListFilterState) { _expensesFilter.update(transform) }
+    fun clearExpensesFilter() { _expensesFilter.value = ListFilterState() }
+    fun setExpensesSort(key: SortKey) { _expensesSort.update { it.tapped(key) } }
+
+    fun updateIncomeFilter(transform: (ListFilterState) -> ListFilterState) { _incomeFilter.update(transform) }
+    fun clearIncomeFilter() { _incomeFilter.value = ListFilterState() }
+    fun setIncomeSort(key: SortKey) { _incomeSort.update { it.tapped(key) } }
+
     // --- Analytics tab: in MONTH mode it shares the global month/range with the Expenses/Income
     // tabs (changing the month anywhere moves all three); the YEAR mode is Analytics-only. ---
     private val _analyticsPeriod = MutableStateFlow(AnalyticsPeriod.MONTH)

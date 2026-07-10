@@ -236,4 +236,41 @@
     <string name="clear_clearing">Clearing…</string>
     <string name="clear_done">Transactions and recurring templates cleared.</string>
     <string name="clear_failed">Clear failed: %1$s</string>
+
+    <!-- Filters &amp; sorting -->
+    <string name="filter_search_placeholder">Search</string>
+    <string name="filter_open">Filters</string>
+    <string name="sort_open">Sort</string>
+    <string name="filter_clear_search">Clear search</string>
+    <string name="filter_section_category">Category</string>
+    <string name="filter_section_account">Account</string>
+    <string name="filter_section_counterparty">Counterparty</string>
+    <string name="filter_section_amount">Amount</string>
+    <string name="filter_section_status">Status</string>
+    <string name="filter_section_recurrence">Recurrence</string>
+    <string name="filter_amount_min">Min</string>
+    <string name="filter_amount_max">Max</string>
+    <string name="filter_status_all">All</string>
+    <string name="filter_status_paid">Paid</string>
+    <string name="filter_status_unpaid">Unpaid</string>
+    <string name="filter_recurrence_all">All</string>
+    <string name="filter_recurrence_recurring">Recurring</string>
+    <string name="filter_recurrence_one_time">One-time</string>
+    <string name="filter_no_account">No account</string>
+    <string name="filter_no_counterparty">No counterparty</string>
+    <string name="filter_clear_all">Clear all</string>
+    <string name="filter_done">Done</string>
+    <string name="filter_no_results">No transactions match your filters.</string>
+    <string name="filter_clear_filters">Clear filters</string>
+    <string name="filter_amount_range_chip">%1$s – %2$s</string>
+    <string name="filter_remove_chip">Remove filter</string>
+    <string name="sort_by_date">Date</string>
+    <string name="sort_by_amount">Amount</string>
+    <string name="sort_by_description">Description</string>
+    <string name="sort_by_category">Category</string>
+    <string name="sort_by_counterparty">Counterparty</string>
+    <string name="cd_sort_ascending">Ascending</string>
+    <string name="cd_sort_descending">Descending</string>
+    <string name="cd_search_open">Search</string>
+    <string name="cd_search_close">Close search</string>
 </resources>

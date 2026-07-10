@@ -235,4 +235,41 @@
     <string name="clear_clearing">Temizleniyor…</string>
     <string name="clear_done">İşlemler ve tekrarlayan şablonlar temizlendi.</string>
     <string name="clear_failed">Temizleme başarısız: %1$s</string>
+
+    <!-- Filtreler ve sıralama -->
+    <string name="filter_search_placeholder">Ara</string>
+    <string name="filter_open">Filtreler</string>
+    <string name="sort_open">Sırala</string>
+    <string name="filter_clear_search">Aramayı temizle</string>
+    <string name="filter_section_category">Kategori</string>
+    <string name="filter_section_account">Hesap</string>
+    <string name="filter_section_counterparty">Karşı Taraf</string>
+    <string name="filter_section_amount">Tutar</string>
+    <string name="filter_section_status">Durum</string>
+    <string name="filter_section_recurrence">Tekrarlama</string>
+    <string name="filter_amount_min">En az</string>
+    <string name="filter_amount_max">En çok</string>
+    <string name="filter_status_all">Tümü</string>
+    <string name="filter_status_paid">Ödenen</string>
+    <string name="filter_status_unpaid">Ödenmemiş</string>
+    <string name="filter_recurrence_all">Tümü</string>
+    <string name="filter_recurrence_recurring">Tekrarlayan</string>
+    <string name="filter_recurrence_one_time">Tek seferlik</string>
+    <string name="filter_no_account">Hesapsız</string>
+    <string name="filter_no_counterparty">Karşı tarafsız</string>
+    <string name="filter_clear_all">Tümünü temizle</string>
+    <string name="filter_done">Tamam</string>
+    <string name="filter_no_results">Filtrelerinizle eşleşen işlem yok.</string>
+    <string name="filter_clear_filters">Filtreleri temizle</string>
+    <string name="filter_amount_range_chip">%1$s – %2$s</string>
+    <string name="filter_remove_chip">Filtreyi kaldır</string>
+    <string name="sort_by_date">Tarih</string>
+    <string name="sort_by_amount">Tutar</string>
+    <string name="sort_by_description">Açıklama</string>
+    <string name="sort_by_category">Kategori</string>
+    <string name="sort_by_counterparty">Karşı Taraf</string>
+    <string name="cd_sort_ascending">Artan</string>
+    <string name="cd_sort_descending">Azalan</string>
+    <string name="cd_search_open">Ara</string>
+    <string name="cd_search_close">Aramayı kapat</string>
 </resources>

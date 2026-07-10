@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -83,36 +84,44 @@ internal fun OneTimeTransactionForm(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        TransactionCoreFields(
-            categories = categories,
-            accounts = accounts,
-            counterparties = counterparties,
-            shared = shared,
-            showErrors = showErrors
-        )
-        DatePickerField(label = stringResource(R.string.form_date), value = date, onValueChange = {
-            date = it
-            isPaid = !it.isAfter(LocalDate.now())
-        })
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Checkbox(checked = isPaid, onCheckedChange = { isPaid = it })
-            Text(stringResource(R.string.form_paid), style = MaterialTheme.typography.bodyMedium)
+            TransactionCoreFields(
+                categories = categories,
+                accounts = accounts,
+                counterparties = counterparties,
+                shared = shared,
+                showErrors = showErrors
+            )
+            DatePickerField(label = stringResource(R.string.form_date), value = date, onValueChange = {
+                date = it
+                isPaid = !it.isAfter(LocalDate.now())
+            })
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Checkbox(checked = isPaid, onCheckedChange = { isPaid = it })
+                Text(stringResource(R.string.form_paid), style = MaterialTheme.typography.bodyMedium)
+            }
         }
-        Button(
-            onClick = { performSave() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(saveLabel ?: stringResource(if (isExpense) R.string.save_expense else R.string.save_income))
+        // Anchored action bar — always reachable without scrolling the form.
+        Surface(tonalElevation = 3.dp) {
+            Button(
+                onClick = { performSave() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(saveLabel ?: stringResource(if (isExpense) R.string.save_expense else R.string.save_income))
+            }
         }
     }
 

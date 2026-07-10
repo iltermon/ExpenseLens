@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -133,13 +134,15 @@ internal fun RecurringForm(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         TransactionCoreFields(
             categories = categories,
             accounts = accounts,
@@ -157,6 +160,7 @@ internal fun RecurringForm(
                 value = frequencyInterval,
                 onValueChange = { if (it.length <= 3) frequencyInterval = it.filter { c -> c.isDigit() } },
                 label = { Text(stringResource(R.string.form_frequency)) },
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.width(100.dp)
             )
@@ -205,11 +209,17 @@ internal fun RecurringForm(
             Switch(checked = autoPayment, onCheckedChange = { autoPayment = it })
         }
 
-        Button(
-            onClick = { performSave() },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
+        }
+        // Anchored action bar — always reachable without scrolling the form.
+        Surface(tonalElevation = 3.dp) {
+            Button(
+                onClick = { performSave() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
+            }
         }
     }
 

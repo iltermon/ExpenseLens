@@ -1,12 +1,19 @@
 package com.iltermon.expenselens.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Payments
@@ -16,7 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -78,41 +85,21 @@ fun AppNavigation(
     val busy by viewModel.busy.collectAsState()
 
     Box(Modifier.fillMaxSize()) {
-    Scaffold(
-        bottomBar = {
-            if (currentRoute in tabRoutes) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        NavigationBarItem(
-                            selected = currentRoute == item.route,
-                            onClick = {
-                                navController.navigate(item.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(item.icon, contentDescription = stringResource(item.label)) },
-                            label = { Text(stringResource(item.label)) }
-                        )
-                    }
-                }
-            }
-        }
-    ) { innerPadding ->
-        // Apply only bottom padding so inner TopAppBars can still extend behind the status bar.
-        // consumeWindowInsets tells nested Scaffolds the nav bar insets are already handled.
-        val bottomPadding = innerPadding.calculateBottomPadding()
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = bottomPadding)
-                .consumeWindowInsets(PaddingValues(bottom = bottomPadding))
+        NavHost(
+            navController = navController,
+            startDestination = Routes.EXPENSES,
+            modifier = Modifier.fillMaxSize(),
+            // Plain crossfade between screens. Combined with the floating nav bar below (which overlays
+            // rather than takes layout space), the content height is identical on every route, so
+            // navigation never reflows the screen.
+            enterTransition = { fadeIn(animationSpec = tween(180)) },
+            exitTransition = { fadeOut(animationSpec = tween(180)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(180)) },
+            popExitTransition = { fadeOut(animationSpec = tween(180)) }
         ) {
-            NavHost(navController = navController, startDestination = Routes.EXPENSES) {
-                composable(Routes.EXPENSES) {
+            // Tab destinations are wrapped in TabContent so their content clears the floating nav bar.
+            composable(Routes.EXPENSES) {
+                TabContent {
                     ExpensesScreen(
                         viewModel = viewModel,
                         onAddTransaction = { navController.navigate(Routes.ADD_EXPENSE) },
@@ -120,10 +107,12 @@ fun AppNavigation(
                         onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
                     )
                 }
-                composable(Routes.ANALYTICS) {
-                    AnalyticsScreen(viewModel = viewModel)
-                }
-                composable(Routes.INCOME) {
+            }
+            composable(Routes.ANALYTICS) {
+                TabContent { AnalyticsScreen(viewModel = viewModel) }
+            }
+            composable(Routes.INCOME) {
+                TabContent {
                     IncomeScreen(
                         viewModel = viewModel,
                         onAddIncome = { navController.navigate(Routes.ADD_INCOME) },
@@ -131,7 +120,9 @@ fun AppNavigation(
                         onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
                     )
                 }
-                composable(Routes.SETTINGS) {
+            }
+            composable(Routes.SETTINGS) {
+                TabContent {
                     SettingsScreen(
                         viewModel = viewModel,
                         onChangeLanguage = onChangeLanguage,
@@ -141,59 +132,72 @@ fun AppNavigation(
                         onOpenTemplates = { navController.navigate(Routes.SETTINGS_TEMPLATES) }
                     )
                 }
-                composable(Routes.SETTINGS_ACCOUNTS) {
-                    AccountsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
-                }
-                composable(Routes.SETTINGS_CATEGORIES) {
-                    CategoriesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
-                }
-                composable(Routes.SETTINGS_COUNTERPARTIES) {
-                    CounterpartiesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
-                }
-                composable(Routes.SETTINGS_TEMPLATES) {
-                    TemplatesScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() },
-                        onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
-                    )
-                }
-                composable(Routes.ADD_EXPENSE) {
-                    AddExpenseScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-                composable(Routes.ADD_INCOME) {
-                    AddIncomeScreen(
-                        viewModel = viewModel,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-                composable(
-                    route = "${Routes.EDIT_TRANSACTION}/{id}",
-                    arguments = listOf(navArgument("id") { type = NavType.IntType })
-                ) { entry ->
-                    val id = entry.arguments?.getInt("id") ?: return@composable
-                    EditTransactionScreen(
-                        viewModel = viewModel,
-                        transactionId = id,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
-                composable(
-                    route = "${Routes.EDIT_TEMPLATE}/{id}",
-                    arguments = listOf(navArgument("id") { type = NavType.IntType })
-                ) { entry ->
-                    val id = entry.arguments?.getInt("id") ?: return@composable
-                    EditTemplateScreen(
-                        viewModel = viewModel,
-                        templateId = id,
-                        onNavigateBack = { navController.popBackStack() }
+            }
+            // Non-tab destinations fill the full height (no nav bar shown for them).
+            composable(Routes.SETTINGS_ACCOUNTS) {
+                AccountsScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS_CATEGORIES) {
+                CategoriesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS_COUNTERPARTIES) {
+                CounterpartiesScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Routes.SETTINGS_TEMPLATES) {
+                TemplatesScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
+                )
+            }
+            composable(Routes.ADD_EXPENSE) {
+                AddExpenseScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Routes.ADD_INCOME) {
+                AddIncomeScreen(viewModel = viewModel, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "${Routes.EDIT_TRANSACTION}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) { entry ->
+                val id = entry.arguments?.getInt("id") ?: return@composable
+                EditTransactionScreen(viewModel = viewModel, transactionId = id, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(
+                route = "${Routes.EDIT_TEMPLATE}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) { entry ->
+                val id = entry.arguments?.getInt("id") ?: return@composable
+                EditTemplateScreen(viewModel = viewModel, templateId = id, onNavigateBack = { navController.popBackStack() })
+            }
+        }
+
+        // Floating bottom nav bar: it overlays the NavHost instead of occupying a Scaffold bottomBar,
+        // so the content height is the same on tab and non-tab routes — opening Add/Edit no longer
+        // reflows/jumps the screen. It just slides out of view when leaving a tab.
+        AnimatedVisibility(
+            visible = currentRoute in tabRoutes,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(animationSpec = tween(180)) { it } + fadeIn(tween(180)),
+            exit = slideOutVertically(animationSpec = tween(180)) { it } + fadeOut(tween(180))
+        ) {
+            NavigationBar {
+                bottomNavItems.forEach { item ->
+                    NavigationBarItem(
+                        selected = currentRoute == item.route,
+                        onClick = {
+                            navController.navigate(item.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.label)) },
+                        label = { Text(stringResource(item.label)) }
                     )
                 }
             }
         }
-    }
 
         if (busy) {
             Box(
@@ -214,4 +218,19 @@ fun AppNavigation(
             }
         }
     }
+}
+
+/**
+ * Wraps a tab destination so its content sits above the floating bottom nav bar (its 80.dp height) and
+ * the system navigation inset — and consumes that inset so a nested Scaffold doesn't apply it again.
+ * Non-tab destinations skip this and use the full height (no bar is shown for them).
+ */
+@Composable
+private fun TabContent(content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(bottom = 80.dp)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+    ) { content() }
 }
