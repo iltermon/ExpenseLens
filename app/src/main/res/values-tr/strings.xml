@@ -149,13 +149,22 @@
     <string name="analytics_net">Net</string>
     <string name="analytics_expenses">Giderler</string>
     <string name="analytics_income">Gelir</string>
-    <string name="analytics_spending_by_category">Kategoriye göre harcama</string>
-    <string name="analytics_spending_by_account">Hesaba göre harcama</string>
     <string name="analytics_no_spending">Bu dönemde harcama yok.</string>
+    <string name="analytics_view_text">Dökümü göster</string>
+    <string name="analytics_view_graph">Grafiği göster</string>
+    <string name="analytics_pick_month">Ay seç</string>
+    <string name="analytics_pick_year">Yıl seç</string>
     <string name="analytics_limit">limit %1$s</string>
     <string name="analytics_recurring_short">↻ %1$s</string>
-    <string name="analytics_spending_over_time">Zaman içinde harcama</string>
-    <string name="analytics_graph_coming_soon">Grafik yakında</string>
+    <string name="analytics_sankey_total_funds">Toplam Fon</string>
+    <string name="analytics_sankey_mode_category">Kategori</string>
+    <string name="analytics_sankey_mode_account">Hesap</string>
+    <string name="analytics_sankey_mode_store">Mağaza</string>
+    <string name="analytics_sankey_unspent">Harcanmayan</string>
+    <string name="analytics_sankey_overspend">Karşılanmayan</string>
+    <string name="analytics_sankey_unassigned">Atanmamış</string>
+    <string name="analytics_sankey_other">Diğer</string>
+    <string name="analytics_sankey_empty">Bu dönemde veri yok.</string>
 
     <!-- Settings -->
     <string name="settings_accounts">Hesaplar</string>

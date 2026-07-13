@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ExpenseLens"
 include(":app")
+include(":sankey")

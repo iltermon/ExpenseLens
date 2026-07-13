@@ -6,16 +6,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -24,14 +21,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -208,7 +203,9 @@ private fun MonthSelectorRow(
 ) {
     val rowModifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp)
+        // Match the list content padding (16.dp) so the navigator lines up with the rows below it and
+        // with the analytics navigator, which uses the same inset.
+        .padding(horizontal = 16.dp, vertical = 8.dp)
 
     // A custom range filter is not month-based, so the month steppers are dropped and the filter
     // takes the full width as its own banner.
@@ -242,35 +239,15 @@ private fun MonthStepperRow(
     val monthFormatter = DateTimeFormatter.ofPattern("MMM")
     val titleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
-    Row(
+    PeriodStepperRow(
+        previousLabel = selectedMonth.minusMonths(1).format(monthFormatter),
+        currentLabel = selectedMonth.format(titleFormatter),
+        nextLabel = selectedMonth.plusMonths(1).format(monthFormatter),
+        onPrevious = onPrevious,
+        onCurrent = onCurrentTapped,
+        onNext = onNext,
         modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedButton(onClick = onPrevious, shape = RoundedCornerShape(50)) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(selectedMonth.minusMonths(1).format(monthFormatter))
-        }
-
-        Button(onClick = onCurrentTapped, shape = RoundedCornerShape(50)) {
-            Text(selectedMonth.format(titleFormatter), fontWeight = FontWeight.Bold)
-        }
-
-        OutlinedButton(onClick = onNext, shape = RoundedCornerShape(50)) {
-            Text(selectedMonth.plusMonths(1).format(monthFormatter))
-            Spacer(Modifier.width(4.dp))
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-    }
+    )
 }
 
 /** Filter mode: a full-width banner showing the active custom date range, tappable to re-pick. */

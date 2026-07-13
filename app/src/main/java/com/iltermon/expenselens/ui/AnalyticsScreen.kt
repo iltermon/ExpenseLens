@@ -1,24 +1,32 @@
 package com.iltermon.expenselens.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,15 +39,28 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
+import com.iltermon.sankey.SankeyDefaults
+import com.iltermon.sankey.SankeyDiagram
+import java.time.Month
+import java.time.Year
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle as JavaTextStyle
+import java.util.Locale
 import kotlin.math.abs
+
+/** Height of the compact Month/Year toggle in the app bar's action slot. */
+private val SEGMENTED_HEIGHT = 32.dp
 
 /**
  * Net spending for a set of items: expenses add; income subtracts **only** when it's a refund —
@@ -64,6 +85,8 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
     val year by viewModel.analyticsYear.collectAsState()
     val categories by viewModel.allCategories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val counterparties by viewModel.counterparties.collectAsState()
+    val categoryNames by viewModel.categoryNamesById.collectAsState()
 
     val totalExpenses = items.filter { it.isExpense }.sumOf { it.amount }
     val totalIncome = items.filter { !it.isExpense }.sumOf { it.amount }
@@ -96,8 +119,25 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
         } else null
     }.sortedByDescending { it.net }
 
+    // Net spending per counterparty (store/vendor). Counterparties carry no limit or recurring.
+    val counterpartyRows = counterparties.mapNotNull { cp ->
+        val net = netOf(items.filter { it.counterpartyId == cp.id }, incomeOnlyCategoryIds)
+        if (net > 0) SpendRow(cp.name, net, null, null) else null
+    }.sortedByDescending { it.net }
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_analytics)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.nav_analytics)) },
+                actions = {
+                    PeriodModeToggle(
+                        isMonth = isMonth,
+                        onModeChange = { viewModel.setAnalyticsPeriod(it) },
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                }
+            )
+        },
         bottomBar = {
             SummaryBar(
                 leftLabel = stringResource(R.string.analytics_total_expenses),
@@ -110,34 +150,45 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(padding)) {
+            // Pinned header — stays fixed while the summary/cards scroll beneath it.
             PeriodHeader(
                 isMonth = isMonth,
-                label = if (isMonth) month.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
-                else year.value.toString(),
-                onModeChange = { viewModel.setAnalyticsPeriod(it) },
+                month = month,
+                year = year,
                 onPrevious = { viewModel.analyticsPrevious() },
-                onNext = { viewModel.analyticsNext() }
+                onNext = { viewModel.analyticsNext() },
+                onPickMonth = { viewModel.setAnalyticsMonth(it) },
+                onPickYear = { viewModel.setAnalyticsYear(it) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            SummaryCards(
-                net = net,
-                totalExpenses = totalExpenses,
-                recurringExpenses = recurringExpenses,
-                totalIncome = totalIncome,
-                recurringIncome = recurringIncome
-            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SummaryCards(
+                    net = net,
+                    totalExpenses = totalExpenses,
+                    recurringExpenses = recurringExpenses,
+                    totalIncome = totalIncome,
+                    recurringIncome = recurringIncome
+                )
 
-            SpendingCard(title = stringResource(R.string.analytics_spending_by_category), rows = categoryRows, showRecurring = false)
-            SpendingCard(title = stringResource(R.string.analytics_spending_by_account), rows = accountRows, showRecurring = true)
-
-            GraphPlaceholderCard()
+                SpendingFlowCard(
+                    items = items,
+                    incomeOnlyCategoryIds = incomeOnlyCategoryIds,
+                    categoryNames = categoryNames,
+                    accountNames = accounts.associate { it.id to it.name },
+                    counterpartyNames = counterparties.associate { it.id to it.name },
+                    categoryRows = categoryRows,
+                    accountRows = accountRows,
+                    counterpartyRows = counterpartyRows,
+                )
+            }
         }
     }
 }
@@ -146,43 +197,166 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
 @Composable
 private fun PeriodHeader(
     isMonth: Boolean,
-    label: String,
-    onModeChange: (AnalyticsPeriod) -> Unit,
+    month: YearMonth,
+    year: Year,
     onPrevious: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onPickMonth: (YearMonth) -> Unit,
+    onPickYear: (Year) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SegmentedButton(
-                selected = isMonth,
-                onClick = { onModeChange(AnalyticsPeriod.MONTH) },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) { Text(stringResource(R.string.analytics_period_month)) }
-            SegmentedButton(
-                selected = !isMonth,
-                onClick = { onModeChange(AnalyticsPeriod.YEAR) },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) { Text(stringResource(R.string.analytics_period_year)) }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(onClick = onPrevious, shape = RoundedCornerShape(50)) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.cd_previous),
-                    modifier = Modifier.size(16.dp)
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+
+    // Same three-pill navigator as the transaction screen. In month mode the side pills show the
+    // adjacent months (short) and the center shows the full month + year; in year mode they show the
+    // adjacent years and the current year.
+    val shortMonth = DateTimeFormatter.ofPattern("MMM")
+    val fullMonth = DateTimeFormatter.ofPattern("MMMM yyyy")
+    val (previousLabel, currentLabel, nextLabel) = if (isMonth) {
+        Triple(
+            month.minusMonths(1).format(shortMonth),
+            month.format(fullMonth),
+            month.plusMonths(1).format(shortMonth),
+        )
+    } else {
+        Triple(
+            (year.value - 1).toString(),
+            year.value.toString(),
+            (year.value + 1).toString(),
+        )
+    }
+
+    PeriodStepperRow(
+        previousLabel = previousLabel,
+        currentLabel = currentLabel,
+        nextLabel = nextLabel,
+        onPrevious = onPrevious,
+        onCurrent = { showPicker = true },
+        onNext = onNext,
+        modifier = modifier,
+    )
+
+    if (showPicker) {
+        PeriodPickerDialog(
+            isMonth = isMonth,
+            month = month,
+            year = year,
+            onPickMonth = { onPickMonth(it); showPicker = false },
+            onPickYear = { onPickYear(it); showPicker = false },
+            onDismiss = { showPicker = false }
+        )
+    }
+}
+
+/** Month/Year mode switch, hosted in the app bar's top-right action slot. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodModeToggle(
+    isMonth: Boolean,
+    onModeChange: (AnalyticsPeriod) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SingleChoiceSegmentedButtonRow(modifier = modifier.height(SEGMENTED_HEIGHT)) {
+        SegmentedButton(
+            selected = isMonth,
+            onClick = { onModeChange(AnalyticsPeriod.MONTH) },
+            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+            icon = {}
+        ) { Text(stringResource(R.string.analytics_period_month), style = MaterialTheme.typography.labelMedium) }
+        SegmentedButton(
+            selected = !isMonth,
+            onClick = { onModeChange(AnalyticsPeriod.YEAR) },
+            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+            icon = {}
+        ) { Text(stringResource(R.string.analytics_period_year), style = MaterialTheme.typography.labelMedium) }
+    }
+}
+
+@Composable
+private fun PeriodPickerDialog(
+    isMonth: Boolean,
+    month: YearMonth,
+    year: Year,
+    onPickMonth: (YearMonth) -> Unit,
+    onPickYear: (Year) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        },
+        title = {
+            Text(stringResource(if (isMonth) R.string.analytics_pick_month else R.string.analytics_pick_year))
+        },
+        text = {
+            if (isMonth) {
+                var pickerYear by rememberSaveable { mutableStateOf(month.year) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(onClick = { pickerYear-- }, shape = CircleShape, contentPadding = PaddingValues(12.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.cd_previous), Modifier.size(16.dp))
+                        }
+                        Text(pickerYear.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        OutlinedButton(onClick = { pickerYear++ }, shape = CircleShape, contentPadding = PaddingValues(12.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.cd_next), Modifier.size(16.dp))
+                        }
+                    }
+                    GridOfCells(
+                        cells = (1..12).toList(),
+                        columns = 3,
+                        isSelected = { m -> pickerYear == month.year && m == month.monthValue },
+                        label = { m -> Month.of(m).getDisplayName(JavaTextStyle.SHORT, Locale.getDefault()) },
+                        onClick = { m -> onPickMonth(YearMonth.of(pickerYear, m)) }
+                    )
+                }
+            } else {
+                val current = year.value
+                GridOfCells(
+                    cells = (current - 9..current + 2).toList(),
+                    columns = 3,
+                    isSelected = { y -> y == current },
+                    label = { y -> y.toString() },
+                    onClick = { y -> onPickYear(Year.of(y)) }
                 )
             }
-            Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            OutlinedButton(onClick = onNext, shape = RoundedCornerShape(50)) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = stringResource(R.string.cd_next),
-                    modifier = Modifier.size(16.dp)
-                )
+        }
+    )
+}
+
+/** A simple wrap-free grid of selectable cells laid out as rows of [columns]. */
+@Composable
+private fun GridOfCells(
+    cells: List<Int>,
+    columns: Int,
+    isSelected: (Int) -> Boolean,
+    label: (Int) -> String,
+    onClick: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        cells.chunked(columns).forEach { rowCells ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowCells.forEach { cell ->
+                    if (isSelected(cell)) {
+                        FilledTonalButton(onClick = { onClick(cell) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
+                            Text(label(cell), maxLines = 1)
+                        }
+                    } else {
+                        TextButton(onClick = { onClick(cell) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
+                            Text(label(cell), maxLines = 1)
+                        }
+                    }
+                }
+                // Pad a short final row so cells keep their column width.
+                repeat(columns - rowCells.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -254,29 +428,6 @@ private data class SpendRow(
 
 
 @Composable
-private fun SpendingCard(title: String, rows: List<SpendRow>, showRecurring: Boolean) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-            if (rows.isEmpty()) {
-                Text(
-                    stringResource(R.string.analytics_no_spending),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                return@Column
-            }
-
-            rows.forEach { row -> SpendRowItem(row, showRecurring) }
-        }
-    }
-}
-
-@Composable
 private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
@@ -328,27 +479,122 @@ private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {
     }
 }
 
+/**
+ * Cash-flow Sankey: income categories → outputs grouped by the selected [SankeyOutputMode]. Mirrors
+ * `netOf` so side totals agree with the spending cards; the diagram itself lives in the `:sankey`
+ * module and stays app-agnostic (this card supplies all strings, colors, and the currency format).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GraphPlaceholderCard() {
+private fun SpendingFlowCard(
+    items: List<ExpenseItem>,
+    incomeOnlyCategoryIds: Set<Int>,
+    categoryNames: Map<Int, String>,
+    accountNames: Map<Int, String>,
+    counterpartyNames: Map<Int, String>,
+    categoryRows: List<SpendRow>,
+    accountRows: List<SpendRow>,
+    counterpartyRows: List<SpendRow>,
+) {
+    var mode by rememberSaveable { mutableStateOf(SankeyOutputMode.CATEGORY) }
+    var showGraph by rememberSaveable { mutableStateOf(true) }
+    val unassignedLabel = stringResource(R.string.analytics_sankey_unassigned)
+    val otherLabel = stringResource(R.string.analytics_sankey_other)
+
+    val data = remember(items, mode, incomeOnlyCategoryIds, categoryNames, accountNames, counterpartyNames, unassignedLabel, otherLabel) {
+        buildSankeyData(
+            items, mode, incomeOnlyCategoryIds, categoryNames, accountNames, counterpartyNames,
+            unassignedLabel, otherLabel,
+        )
+    }
+
+    // money() is @Composable and can't be called inside the formatter lambda, so build it by hand.
+    val symbol = LocalCurrencySymbol.current
+    val formatter: (Double) -> String = remember(symbol) { { v -> symbol + "%.2f".format(v) } }
+
+    val style = SankeyDefaults.style(isSystemInDarkTheme()).copy(
+        labelTextStyle = MaterialTheme.typography.labelMedium,
+        valueTextStyle = MaterialTheme.typography.labelSmall,
+        labelColor = MaterialTheme.colorScheme.onSurface,
+        valueColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        valueFormatter = formatter,
+    )
+
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                stringResource(R.string.analytics_spending_over_time),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    stringResource(R.string.analytics_graph_coming_soon),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Selector (drives both the graph grouping and the text breakdown) + a corner toggle.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val modes = listOf(
+                    SankeyOutputMode.CATEGORY to R.string.analytics_sankey_mode_category,
+                    SankeyOutputMode.ACCOUNT to R.string.analytics_sankey_mode_account,
+                    SankeyOutputMode.COUNTERPARTY to R.string.analytics_sankey_mode_store,
                 )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+                    modes.forEachIndexed { index, (m, label) ->
+                        SegmentedButton(
+                            selected = mode == m,
+                            onClick = { mode = m },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                            icon = {}
+                        ) { Text(stringResource(label)) }
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = { showGraph = !showGraph }) {
+                    if (showGraph) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = stringResource(R.string.analytics_view_text)
+                        )
+                    } else {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ShowChart,
+                            contentDescription = stringResource(R.string.analytics_view_graph)
+                        )
+                    }
+                }
+            }
+
+            if (showGraph) {
+                if (data.incomes.isEmpty() && data.outputs.isEmpty()) {
+                    Text(
+                        stringResource(R.string.analytics_sankey_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    val maxSide = maxOf(data.incomes.size, data.outputs.size)
+                    val chartHeight = (44.dp * maxSide).coerceIn(240.dp, 420.dp)
+                    SankeyDiagram(
+                        sources = data.incomes,
+                        targets = data.outputs,
+                        style = style,
+                        remainderLabel = stringResource(R.string.analytics_sankey_unspent),
+                        deficitLabel = stringResource(R.string.analytics_sankey_overspend),
+                        hubLabel = stringResource(R.string.analytics_sankey_total_funds),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(chartHeight)
+                    )
+                }
+            } else {
+                val rows = when (mode) {
+                    SankeyOutputMode.CATEGORY -> categoryRows
+                    SankeyOutputMode.ACCOUNT -> accountRows
+                    SankeyOutputMode.COUNTERPARTY -> counterpartyRows
+                }
+                if (rows.isEmpty()) {
+                    Text(
+                        stringResource(R.string.analytics_no_spending),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    rows.forEach { row -> SpendRowItem(row, showRecurring = mode == SankeyOutputMode.ACCOUNT) }
+                }
             }
         }
     }

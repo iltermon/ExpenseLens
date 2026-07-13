@@ -30,6 +30,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Pattern:** MVVM. Data flows Room → Repository → ViewModel (StateFlow) → Composable UI.
 
+**Modules:** `:app` (the application) and `:sankey` — a standalone, app-agnostic Compose library that renders a hand-rolled Sankey diagram (Canvas, no third-party chart lib). `:sankey` has no Room/app/Material3 dependency; it takes two typed lists of nodes and derives the ribbons itself. Its pure geometry (`SankeyLayout.kt`) is JVM-unit-tested. The app maps `ExpenseItem`s into its inputs in `ui/SankeyMapper.kt`.
+
 ### Data layer (`data/`)
 
 Two Room entities:
@@ -42,9 +44,7 @@ Two Room entities:
 
 `ExpenseLensViewModel` is the single ViewModel for the whole app. It combines `filteredTransactions` and `activeRecurring` into `expenseItems: StateFlow<List<ExpenseItem>>`. `ExpenseItem` is the UI-facing model that unifies both sources — a recurring template that hasn't been paid yet appears as an `ExpenseItem` with `isRecurring = true` and `transactionId = null`. Marking it paid via `togglePaid()` converts it into a real `Transaction` in the database.
 
-`AppNavigation.kt` owns all routes. Currently two screens:
-- `expenses` → `ExpensesScreen`
-- `add_transaction` → `AddTransactionScreen`
+`AppNavigation.kt` owns all routes (see it for the authoritative screen list — expenses, income, analytics, templates, per-transaction add/edit, and the settings-management screens for accounts/categories/counterparties). The `AnalyticsScreen` hosts the Sankey cash-flow chart built from `SankeyMapper` + the `:sankey` module.
 
 ### Key invariants
 

@@ -385,6 +385,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         _dateRange.value = DateRange(newMonth.atDay(1), newMonth.atEndOfMonth())
     }
 
+    /** Jump the (shared) month directly, e.g. from the Analytics period picker. */
+    fun setAnalyticsMonth(month: YearMonth) {
+        _selectedMonth.value = month
+        _dateRange.value = DateRange(month.atDay(1), month.atEndOfMonth())
+    }
+
+    /** Jump the Analytics-only year directly. */
+    fun setAnalyticsYear(year: Year) {
+        _analyticsYear.value = year
+    }
+
     fun selectDateRange(start: LocalDate, end: LocalDate) {
         _dateRange.value = DateRange(start, end)
     }
