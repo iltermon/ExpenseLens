@@ -9,11 +9,15 @@ import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.ExpenseLensRepository
-import com.iltermon.expenselens.data.RecurringTemplate
+import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.Transaction
 import com.iltermon.expenselens.data.occurrencesInRange
 import com.iltermon.expenselens.ui.dev.DataImporter
 import com.iltermon.expenselens.ui.dev.XlsxReader
+import com.iltermon.expenselens.ui.transactions.ListFilterState
+import com.iltermon.expenselens.ui.transactions.SortKey
+import com.iltermon.expenselens.ui.transactions.SortState
+import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -180,7 +184,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val allTemplates: StateFlow<List<RecurringTemplate>> = repository.getAllTemplates()
+    val allTemplates: StateFlow<List<RecurringTransactionTemplate>> = repository.getAllTemplates()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     // All counterparties (store/vendor/payer), read from their own small table — cheap to query and
@@ -217,7 +221,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     // every recurring template in [range], hiding occurrences that already exist as a transaction.
     private fun mergeItems(
         transactions: List<Transaction>,
-        templates: List<RecurringTemplate>,
+        templates: List<RecurringTransactionTemplate>,
         range: DateRange
     ): List<ExpenseItem> {
         val transactionItems = transactions.map { t ->
@@ -309,11 +313,13 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
 
     fun updateExpensesFilter(transform: (ListFilterState) -> ListFilterState) { _expensesFilter.update(transform) }
-    fun clearExpensesFilter() { _expensesFilter.value = ListFilterState() }
+    fun clearExpensesFilter() { _expensesFilter.value = ListFilterState()
+    }
     fun setExpensesSort(key: SortKey) { _expensesSort.update { it.tapped(key) } }
 
     fun updateIncomeFilter(transform: (ListFilterState) -> ListFilterState) { _incomeFilter.update(transform) }
-    fun clearIncomeFilter() { _incomeFilter.value = ListFilterState() }
+    fun clearIncomeFilter() { _incomeFilter.value = ListFilterState()
+    }
     fun setIncomeSort(key: SortKey) { _incomeSort.update { it.tapped(key) } }
 
     // --- Analytics tab: in MONTH mode it shares the global month/range with the Expenses/Income
@@ -385,6 +391,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         _dateRange.value = DateRange(newMonth.atDay(1), newMonth.atEndOfMonth())
     }
 
+    /** Jump the (shared) month directly, e.g. from the Analytics period picker. */
+    fun setAnalyticsMonth(month: YearMonth) {
+        _selectedMonth.value = month
+        _dateRange.value = DateRange(month.atDay(1), month.atEndOfMonth())
+    }
+
+    /** Jump the Analytics-only year directly. */
+    fun setAnalyticsYear(year: Year) {
+        _analyticsYear.value = year
+    }
+
     fun selectDateRange(start: LocalDate, end: LocalDate) {
         _dateRange.value = DateRange(start, end)
     }
@@ -399,7 +416,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.insertTransaction(transaction) }
     }
 
-    fun insertTemplate(template: RecurringTemplate) {
+    fun insertTemplate(template: RecurringTransactionTemplate) {
         viewModelScope.launch { repository.insertTemplate(template) }
     }
 
@@ -419,14 +436,14 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
 
-    fun saveTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
+    fun saveTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
             val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.insertTemplate(template.copy(counterpartyId = cpId))
         }
     }
 
-    fun updateTemplate(template: RecurringTemplate, choice: CounterpartyChoice) {
+    fun updateTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
             val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.updateTemplate(template.copy(counterpartyId = cpId))
@@ -487,17 +504,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         launchBusy { repository.deleteTransactionById(id) }
     }
 
-    fun updateTemplate(template: RecurringTemplate) {
+    fun updateTemplate(template: RecurringTransactionTemplate) {
         viewModelScope.launch { repository.updateTemplate(template) }
     }
 
-    fun deleteTemplate(template: RecurringTemplate) {
+    fun deleteTemplate(template: RecurringTransactionTemplate) {
         launchBusy { repository.deleteSeries(template) }
     }
 
     suspend fun getTransactionById(id: Int): Transaction? = repository.getTransactionById(id)
 
-    suspend fun getTemplateById(id: Int): RecurringTemplate? = repository.getTemplateById(id)
+    suspend fun getTemplateById(id: Int): RecurringTransactionTemplate? = repository.getTemplateById(id)
 
     fun insertAccount(account: Account) {
         viewModelScope.launch { repository.insertAccount(account) }

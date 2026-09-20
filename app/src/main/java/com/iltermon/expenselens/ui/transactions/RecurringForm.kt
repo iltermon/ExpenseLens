@@ -1,0 +1,278 @@
+package com.iltermon.expenselens.ui.transactions
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.iltermon.expenselens.R
+import com.iltermon.expenselens.data.Account
+import com.iltermon.expenselens.data.Category
+import com.iltermon.expenselens.data.Counterparty
+import com.iltermon.expenselens.data.RecurringTransactionTemplate
+import com.iltermon.expenselens.ui.CounterpartyChoice
+import com.iltermon.expenselens.ui.util.frequencyUnitLabel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+
+private val frequencyUnits = listOf("Day", "Week", "Month", "Year")
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun RecurringForm(
+    categories: List<Category>,
+    accounts: List<Account>,
+    isExpense: Boolean,
+    shared: TransactionFormState,
+    onSave: (RecurringTransactionTemplate, CounterpartyChoice) -> Unit,
+    initialStartDate: LocalDate = LocalDate.now(),
+    initialEndDate: LocalDate? = null,
+    initialInterval: Int = 1,
+    initialUnit: String = "Month",
+    initialAutoPayment: Boolean = isExpense,
+    saveLabel: String? = null,
+    counterparties: List<Counterparty> = emptyList(),
+    gate: FormBackGate? = null,
+    sharedBaseline: SharedBaseline? = null
+) {
+    var frequencyInterval by remember { mutableStateOf(initialInterval.toString()) }
+    var frequencyUnit by remember {
+        mutableStateOf(if (initialUnit in frequencyUnits) initialUnit else frequencyUnits[2])
+    }
+    var unitExpanded by remember { mutableStateOf(false) }
+
+    val now = LocalDate.now()
+    var startDate by remember { mutableStateOf(initialStartDate) }
+    var isFinite by remember { mutableStateOf(initialEndDate != null) }
+    var endDate by remember { mutableStateOf(initialEndDate ?: now.plusMonths(1)) }
+
+    val intervalInt = frequencyInterval.toIntOrNull()?.coerceAtLeast(1) ?: 1
+    var autoPayment by remember { mutableStateOf(initialAutoPayment) }
+    var showErrors by remember { mutableStateOf(false) }
+    val saveController = rememberCounterpartySaveController<RecurringTransactionTemplate>()
+    val localBaseline = remember {
+        RecurringLocalBaseline(
+            interval = initialInterval.toString(),
+            unit = if (initialUnit in frequencyUnits) initialUnit else frequencyUnits[2],
+            startDate = initialStartDate,
+            isFinite = initialEndDate != null,
+            endDate = initialEndDate ?: now.plusMonths(1),
+            autoPayment = initialAutoPayment
+        )
+    }
+
+    fun performSave() {
+        showErrors = true
+        val validation = coreFieldsValid(shared)
+        if (!validation.isValid) return
+        val template = RecurringTransactionTemplate(
+            description = shared.description,
+            amount = validation.amountValue!!,
+            categoryId = shared.selectedCategory!!.id,
+            startDate = startDate.toString(),
+            endDate = if (isFinite) endDate.toString() else null,
+            isExpense = isExpense,
+            frequencyInterval = intervalInt,
+            frequencyUnit = frequencyUnit,
+            autoPayment = autoPayment,
+            accountId = shared.selectedAccount!!.id
+        )
+        saveController.submit(
+            entity = template,
+            name = shared.counterpartyName,
+            counterparties = counterparties,
+            categoryId = shared.selectedCategory!!.id,
+            accountId = shared.selectedAccount!!.id,
+            onSave = onSave
+        )
+    }
+
+    if (gate != null) {
+        SideEffect {
+            gate.isDirty = {
+                (sharedBaseline?.isDirty(shared) ?: false) ||
+                    frequencyInterval != localBaseline.interval ||
+                    frequencyUnit != localBaseline.unit ||
+                    startDate != localBaseline.startDate ||
+                    isFinite != localBaseline.isFinite ||
+                    (isFinite && endDate != localBaseline.endDate) ||
+                    autoPayment != localBaseline.autoPayment
+            }
+            gate.requestSave = { performSave() }
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+        TransactionCoreFields(
+            categories = categories,
+            accounts = accounts,
+            counterparties = counterparties,
+            shared = shared,
+            showErrors = showErrors
+        )
+        Text(
+            text = stringResource(R.string.form_recurrence),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = frequencyInterval,
+                onValueChange = { if (it.length <= 3) frequencyInterval = it.filter { c -> c.isDigit() } },
+                label = { Text(stringResource(R.string.form_frequency)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.width(100.dp)
+            )
+            ExposedDropdownMenuBox(
+                expanded = unitExpanded,
+                onExpandedChange = { unitExpanded = !unitExpanded },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = frequencyUnitLabel(frequencyUnit),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.form_unit)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                )
+                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    frequencyUnits.forEach { unit ->
+                        DropdownMenuItem(text = { Text(frequencyUnitLabel(unit)) }, onClick = { frequencyUnit = unit; unitExpanded = false })
+                    }
+                }
+            }
+        }
+
+        DatePickerField(label = stringResource(R.string.form_start_date), value = startDate, onValueChange = { startDate = it })
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.form_fixed_end_date), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = isFinite, onCheckedChange = { isFinite = it })
+        }
+
+        if (isFinite) {
+            DatePickerField(label = stringResource(R.string.form_end_date), value = endDate, onValueChange = { endDate = it })
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.form_auto_payment), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = autoPayment, onCheckedChange = { autoPayment = it })
+        }
+
+        }
+        // Anchored action bar — always reachable without scrolling the form.
+        Surface(tonalElevation = 3.dp) {
+            Button(
+                onClick = { performSave() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(saveLabel ?: stringResource(if (isExpense) R.string.save_recurring_expense else R.string.save_recurring_income))
+            }
+        }
+    }
+
+    CounterpartySavePromptDialog(controller = saveController, onSave = onSave)
+}
+
+/** Baseline for the recurring form's local fields, used to detect unsaved changes on back. */
+private data class RecurringLocalBaseline(
+    val interval: String,
+    val unit: String,
+    val startDate: LocalDate,
+    val isFinite: Boolean,
+    val endDate: LocalDate,
+    val autoPayment: Boolean
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun DatePickerField(label: String, value: LocalDate, onValueChange: (LocalDate) -> Unit) {
+    var showDialog by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = value.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    )
+
+    Box {
+        OutlinedTextField(
+            value = value.toString(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
+    }
+
+    if (showDialog) {
+        DatePickerDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        onValueChange(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+                    }
+                    showDialog = false
+                }) { Text(stringResource(R.string.action_ok)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.action_cancel)) }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}

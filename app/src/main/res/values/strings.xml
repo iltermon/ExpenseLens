@@ -149,13 +149,22 @@
     <string name="analytics_net">Net</string>
     <string name="analytics_expenses">Expenses</string>
     <string name="analytics_income">Income</string>
-    <string name="analytics_spending_by_category">Spending by category</string>
-    <string name="analytics_spending_by_account">Spending by account</string>
     <string name="analytics_no_spending">No spending in this period.</string>
+    <string name="analytics_view_text">Show breakdown</string>
+    <string name="analytics_view_graph">Show graph</string>
+    <string name="analytics_pick_month">Select month</string>
+    <string name="analytics_pick_year">Select year</string>
     <string name="analytics_limit">limit %1$s</string>
     <string name="analytics_recurring_short">↻ %1$s</string>
-    <string name="analytics_spending_over_time">Spending over time</string>
-    <string name="analytics_graph_coming_soon">Graph coming soon</string>
+    <string name="analytics_sankey_total_funds">Total Funds</string>
+    <string name="analytics_sankey_mode_category">Category</string>
+    <string name="analytics_sankey_mode_account">Account</string>
+    <string name="analytics_sankey_mode_store">Store</string>
+    <string name="analytics_sankey_unspent">Unspent</string>
+    <string name="analytics_sankey_overspend">Not covered</string>
+    <string name="analytics_sankey_unassigned">Unassigned</string>
+    <string name="analytics_sankey_other">Other</string>
+    <string name="analytics_sankey_empty">No data for this period.</string>
 
     <!-- Settings -->
     <string name="settings_accounts">Accounts</string>

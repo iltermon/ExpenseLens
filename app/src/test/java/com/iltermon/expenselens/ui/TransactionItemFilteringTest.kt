@@ -1,5 +1,11 @@
 package com.iltermon.expenselens.ui
 
+import com.iltermon.expenselens.ui.transactions.ListFilterState
+import com.iltermon.expenselens.ui.transactions.PaidStatusFilter
+import com.iltermon.expenselens.ui.transactions.RecurrenceFilter
+import com.iltermon.expenselens.ui.transactions.SortKey
+import com.iltermon.expenselens.ui.transactions.SortState
+import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -104,7 +110,9 @@ class TransactionItemFilteringTest {
         )
         assertEquals(listOf(1), ids(run(items, ListFilterState(accountIds = setOf(100)))))
         assertEquals(listOf(3), ids(run(items, ListFilterState(noAccount = true))))
-        assertEquals(listOf(1, 3), ids(run(items, ListFilterState(accountIds = setOf(100), noAccount = true))))
+        assertEquals(listOf(1, 3), ids(run(items,
+            ListFilterState(accountIds = setOf(100), noAccount = true)
+        )))
     }
 
     @Test
@@ -129,7 +137,9 @@ class TransactionItemFilteringTest {
     fun paidStatus_variants() {
         val items = listOf(item(1, isPaid = true), item(2, isPaid = false))
         assertEquals(listOf(1), ids(run(items, ListFilterState(paidStatus = PaidStatusFilter.PAID))))
-        assertEquals(listOf(2), ids(run(items, ListFilterState(paidStatus = PaidStatusFilter.UNPAID))))
+        assertEquals(listOf(2), ids(run(items,
+            ListFilterState(paidStatus = PaidStatusFilter.UNPAID)
+        )))
     }
 
     @Test
@@ -137,8 +147,12 @@ class TransactionItemFilteringTest {
         val projected = item(1, isRecurring = true, templateId = 5, isPaid = false)
         val autoPaid = item(2, isRecurring = false, templateId = 5, isPaid = true) // materialized auto-payment
         val oneTime = item(3, templateId = null)
-        assertEquals(listOf(1, 2), ids(run(listOf(projected, autoPaid, oneTime), ListFilterState(recurrence = RecurrenceFilter.RECURRING))))
-        assertEquals(listOf(3), ids(run(listOf(projected, autoPaid, oneTime), ListFilterState(recurrence = RecurrenceFilter.ONE_TIME))))
+        assertEquals(listOf(1, 2), ids(run(listOf(projected, autoPaid, oneTime),
+            ListFilterState(recurrence = RecurrenceFilter.RECURRING)
+        )))
+        assertEquals(listOf(3), ids(run(listOf(projected, autoPaid, oneTime),
+            ListFilterState(recurrence = RecurrenceFilter.ONE_TIME)
+        )))
     }
 
     // --- AND across dimensions ----------------------------------------------------------------
@@ -150,7 +164,9 @@ class TransactionItemFilteringTest {
             item(2, description = "shop", categoryId = 20, amount = 50.0),
             item(3, description = "fuel", categoryId = 10, amount = 50.0),
         )
-        val out = run(items, ListFilterState(searchQuery = "shop", categoryIds = setOf(10), amountMin = 40.0))
+        val out = run(items,
+            ListFilterState(searchQuery = "shop", categoryIds = setOf(10), amountMin = 40.0)
+        )
         assertEquals(listOf(1), ids(out))
     }
 
@@ -159,20 +175,36 @@ class TransactionItemFilteringTest {
     @Test
     fun sortByAmount_ascAndDesc() {
         val items = listOf(item(1, amount = 30.0), item(2, amount = 10.0), item(3, amount = 20.0))
-        assertEquals(listOf(2, 3, 1), ids(run(items, sort = SortState(SortKey.AMOUNT, ascending = true))))
-        assertEquals(listOf(1, 3, 2), ids(run(items, sort = SortState(SortKey.AMOUNT, ascending = false))))
+        assertEquals(listOf(2, 3, 1), ids(run(items, sort = SortState(
+            SortKey.AMOUNT,
+            ascending = true
+        )
+        )))
+        assertEquals(listOf(1, 3, 2), ids(run(items, sort = SortState(
+            SortKey.AMOUNT,
+            ascending = false
+        )
+        )))
     }
 
     @Test
     fun sortByDescription_caseInsensitive() {
         val items = listOf(item(1, description = "banana"), item(2, description = "Apple"), item(3, description = "cherry"))
-        assertEquals(listOf(2, 1, 3), ids(run(items, sort = SortState(SortKey.DESCRIPTION, ascending = true))))
+        assertEquals(listOf(2, 1, 3), ids(run(items, sort = SortState(
+            SortKey.DESCRIPTION,
+            ascending = true
+        )
+        )))
     }
 
     @Test
     fun sortByCategory_usesResolvedNames() {
         val items = listOf(item(1, categoryId = 20), item(2, categoryId = 10)) // Rent, Groceries
-        assertEquals(listOf(2, 1), ids(run(items, sort = SortState(SortKey.CATEGORY, ascending = true))))
+        assertEquals(listOf(2, 1), ids(run(items, sort = SortState(
+            SortKey.CATEGORY,
+            ascending = true
+        )
+        )))
     }
 
     @Test
@@ -183,9 +215,17 @@ class TransactionItemFilteringTest {
             item(3, counterpartyId = 1, date = "2026-07-01"),  // Aldi
         )
         // Ascending: Aldi, Rewe, then the null-name item last.
-        assertEquals(listOf(3, 1, 2), ids(run(items, sort = SortState(SortKey.COUNTERPARTY, ascending = true))))
+        assertEquals(listOf(3, 1, 2), ids(run(items, sort = SortState(
+            SortKey.COUNTERPARTY,
+            ascending = true
+        )
+        )))
         // Descending: Rewe, Aldi, and the null-name item STILL last.
-        assertEquals(listOf(1, 3, 2), ids(run(items, sort = SortState(SortKey.COUNTERPARTY, ascending = false))))
+        assertEquals(listOf(1, 3, 2), ids(run(items, sort = SortState(
+            SortKey.COUNTERPARTY,
+            ascending = false
+        )
+        )))
     }
 
     @Test
@@ -196,7 +236,11 @@ class TransactionItemFilteringTest {
             item(2, amount = 10.0, date = "2026-07-01"),
         )
         // Equal amounts -> ordered by date then id, regardless of direction of the (equal) key.
-        assertEquals(listOf(1, 2, 3), ids(run(items, sort = SortState(SortKey.AMOUNT, ascending = false))))
+        assertEquals(listOf(1, 2, 3), ids(run(items, sort = SortState(
+            SortKey.AMOUNT,
+            ascending = false
+        )
+        )))
     }
 
     // --- SortState / advancedCount ------------------------------------------------------------
