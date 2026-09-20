@@ -3,7 +3,7 @@ package com.iltermon.expenselens.ui.dev
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.ExpenseLensRepository
-import com.iltermon.expenselens.data.RecurringTemplate
+import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.Transaction
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
@@ -123,7 +123,7 @@ object DataImporter {
             val startDate = excelSerialToIso(cell(row, 3)) ?: return@forEach
             val (interval, unit) = mapFrequency(cell(row, 5))
             repo.insertTemplate(
-                RecurringTemplate(
+                RecurringTransactionTemplate(
                     description = cell(row, 0).orEmpty(),
                     amount = cell(row, 1)?.toDoubleOrNull() ?: 0.0,
                     categoryId = cell(row, 2)?.let { categoryIdByName[it] },

@@ -28,16 +28,16 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
         db.transactionDao().update(transaction)
 
     // Recurring Templates
-    fun getAllTemplates(): Flow<List<RecurringTemplate>> =
+    fun getAllTemplates(): Flow<List<RecurringTransactionTemplate>> =
         db.recurringTemplateDao().getAllTemplates()
 
-    suspend fun getTemplateById(id: Int): RecurringTemplate? =
+    suspend fun getTemplateById(id: Int): RecurringTransactionTemplate? =
         db.recurringTemplateDao().getById(id)
 
-    suspend fun insertTemplate(template: RecurringTemplate) =
+    suspend fun insertTemplate(template: RecurringTransactionTemplate) =
         db.recurringTemplateDao().insert(template)
 
-    suspend fun deleteTemplate(template: RecurringTemplate) =
+    suspend fun deleteTemplate(template: RecurringTransactionTemplate) =
         db.recurringTemplateDao().delete(template)
 
     /**
@@ -46,13 +46,13 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
      * template is removed first so the auto-pay collector can't re-create the rows mid-operation,
      * and [withTransaction] means Room fires a single invalidation after the final state is set.
      */
-    suspend fun deleteSeries(template: RecurringTemplate) =
+    suspend fun deleteSeries(template: RecurringTransactionTemplate) =
         db.withTransaction {
             db.recurringTemplateDao().delete(template)
             db.transactionDao().deleteByTemplate(template.id)
         }
 
-    suspend fun updateTemplate(template: RecurringTemplate) =
+    suspend fun updateTemplate(template: RecurringTransactionTemplate) =
         db.recurringTemplateDao().update(template)
 
     // Accounts

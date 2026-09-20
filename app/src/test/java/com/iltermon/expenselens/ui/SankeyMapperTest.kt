@@ -1,5 +1,7 @@
 package com.iltermon.expenselens.ui
 
+import com.iltermon.expenselens.ui.util.SankeyOutputMode
+import com.iltermon.expenselens.ui.util.buildSankeyData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

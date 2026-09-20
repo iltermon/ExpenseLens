@@ -4,14 +4,14 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 /**
- * Expands a [RecurringTemplate] into the concrete dates on which it falls due
+ * Expands a [RecurringTransactionTemplate] into the concrete dates on which it falls due
  * within [rangeStart]..[rangeEnd] (both inclusive).
  *
- * Occurrences are anchored at the template's [RecurringTemplate.startDate] and
- * step by [RecurringTemplate.frequencyInterval] × [RecurringTemplate.frequencyUnit].
- * The template's own [RecurringTemplate.endDate] (if set) caps the series.
+ * Occurrences are anchored at the template's [RecurringTransactionTemplate.startDate] and
+ * step by [RecurringTransactionTemplate.frequencyInterval] × [RecurringTransactionTemplate.frequencyUnit].
+ * The template's own [RecurringTransactionTemplate.endDate] (if set) caps the series.
  */
-fun RecurringTemplate.occurrencesInRange(
+fun RecurringTransactionTemplate.occurrencesInRange(
     rangeStart: LocalDate,
     rangeEnd: LocalDate
 ): List<LocalDate> {
@@ -42,7 +42,7 @@ fun RecurringTemplate.occurrencesInRange(
     return result
 }
 
-private fun RecurringTemplate.occurrenceAt(anchor: LocalDate, steps: Long): LocalDate =
+private fun RecurringTransactionTemplate.occurrenceAt(anchor: LocalDate, steps: Long): LocalDate =
     when (frequencyUnit) {
         "Day" -> anchor.plusDays(steps)
         "Week" -> anchor.plusWeeks(steps)

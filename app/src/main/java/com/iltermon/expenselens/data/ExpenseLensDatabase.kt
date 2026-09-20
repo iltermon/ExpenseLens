@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
-    entities = [Transaction::class, RecurringTemplate::class, Account::class, Category::class, AppSetting::class, Counterparty::class],
+    entities = [Transaction::class, RecurringTransactionTemplate::class, Account::class, Category::class, AppSetting::class, Counterparty::class],
     version = 12,
     exportSchema = false
 )
