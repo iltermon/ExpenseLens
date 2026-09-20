@@ -200,10 +200,27 @@ private fun CounterpartyDialog(
     var defaultAccountId by remember { mutableStateOf(initial?.defaultAccountId) }
     var catExpanded by remember { mutableStateOf(false) }
     var accExpanded by remember { mutableStateOf(false) }
+    var showDiscard by remember { mutableStateOf(false) }
     val noneLabel = stringResource(R.string.action_none)
 
+    fun save() {
+        if (name.isNotBlank()) {
+            onConfirm(
+                (initial ?: Counterparty(name = "")).copy(
+                    name = name.trim(),
+                    defaultCategoryId = defaultCategoryId,
+                    defaultAccountId = defaultAccountId
+                )
+            )
+        }
+    }
+
+    val isDirty = name != (initial?.name ?: "") ||
+        defaultCategoryId != initial?.defaultCategoryId ||
+        defaultAccountId != initial?.defaultAccountId
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (isDirty) showDiscard = true else onDismiss() },
         title = { Text(stringResource(if (initial == null) R.string.counterparty_add_title else R.string.counterparty_edit_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -256,17 +273,7 @@ private fun CounterpartyDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    if (name.isNotBlank()) {
-                        onConfirm(
-                            (initial ?: Counterparty(name = "")).copy(
-                                name = name.trim(),
-                                defaultCategoryId = defaultCategoryId,
-                                defaultAccountId = defaultAccountId
-                            )
-                        )
-                    }
-                },
+                onClick = { save() },
                 enabled = name.isNotBlank()
             ) { Text(stringResource(if (initial == null) R.string.action_add else R.string.action_save)) }
         },
@@ -274,6 +281,14 @@ private fun CounterpartyDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
+
+    if (showDiscard) {
+        UnsavedChangesDialog(
+            onSave = { showDiscard = false; save() },
+            onDiscard = { showDiscard = false; onDismiss() },
+            onCancel = { showDiscard = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -85,8 +85,9 @@ internal fun TransactionCoreFields(
         onCounterpartySelected = { cp ->
             selectedCounterparty = cp
             counterpartyName = cp.name
-            cp.defaultCategoryId?.let { id -> selectedCategory = categories.find { it.id == id } }
-            cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
+            // Only prefill fields the user hasn't already set, so a counterparty's defaults never clobber input.
+            if (selectedCategory == null) cp.defaultCategoryId?.let { id -> selectedCategory = categories.find { it.id == id } }
+            if (selectedAccount == null) cp.defaultAccountId?.let { id -> selectedAccount = accounts.find { it.id == id } }
         },
         isError = showErrors && !validation.counterpartyValid
     )
