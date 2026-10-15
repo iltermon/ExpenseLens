@@ -57,6 +57,7 @@ import com.iltermon.expenselens.ui.transactions.EditTransactionScreen
 import com.iltermon.expenselens.ui.transactions.ExpensesScreen
 import com.iltermon.expenselens.ui.transactions.IncomeScreen
 import com.iltermon.expenselens.ui.analytics.AnalyticsViewModel
+import com.iltermon.expenselens.ui.dev.ImportViewModel
 
 object Routes {
     const val EXPENSES = "expenses"
@@ -91,12 +92,15 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     viewModel: com.iltermon.expenselens.ui.ExpenseLensViewModel,
     analyticsViewModel: AnalyticsViewModel,
+    importViewModel: ImportViewModel,
     onChangeLanguage: (String) -> Unit
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val tabRoutes = bottomNavItems.map { it.route }
-    val busy by viewModel.busy.collectAsState()
+    val mainBusy by viewModel.busy.collectAsState()
+    val importBusy by importViewModel.busy.collectAsState()
+    val busy = mainBusy || importBusy
 
     Box(Modifier.fillMaxSize()) {
         NavHost(
@@ -143,6 +147,7 @@ fun AppNavigation(
                 TabContent {
                     SettingsScreen(
                         viewModel = viewModel,
+                        importViewModel = importViewModel,
                         onChangeLanguage = onChangeLanguage,
                         onOpenAccounts = { navController.navigate(Routes.SETTINGS_ACCOUNTS) },
                         onOpenCategories = { navController.navigate(Routes.SETTINGS_CATEGORIES) },

@@ -36,7 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
-import com.iltermon.expenselens.ui.ImportStatus
+import com.iltermon.expenselens.ui.dev.ImportStatus
+import com.iltermon.expenselens.ui.dev.ImportViewModel
 import com.iltermon.expenselens.ui.util.LocaleManager
 import java.util.Locale
 
@@ -51,6 +52,7 @@ private val currencyOptions = listOf(
 @Composable
 fun SettingsScreen(
     viewModel: ExpenseLensViewModel,
+    importViewModel: ImportViewModel,
     onChangeLanguage: (String) -> Unit,
     onOpenAccounts: () -> Unit,
     onOpenCategories: () -> Unit,
@@ -61,10 +63,10 @@ fun SettingsScreen(
     var showClearDataDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val importStatus by viewModel.importStatus.collectAsState()
+    val importStatus by importViewModel.importStatus.collectAsState()
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
-    ) { uri -> uri?.let { viewModel.importFromUri(context, it) } }
+    ) { uri -> uri?.let { importViewModel.importFromUri(context, it) } }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(stringResource(R.string.nav_settings)) }) }
@@ -138,7 +140,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.clearTransactions()
+                        importViewModel.clearTransactions()
                         showClearDataDialog = false
                     }
                 ) { Text(stringResource(R.string.action_clear)) }
@@ -150,7 +152,7 @@ fun SettingsScreen(
     }
 }
 
-/** Renders an [com.iltermon.expenselens.ui.ImportStatus] in the user's language. */
+/** Renders an [ImportStatus] in the user's language. */
 @Composable
 private fun importStatusText(status: ImportStatus): String = when (status) {
     ImportStatus.Importing -> stringResource(R.string.import_importing)

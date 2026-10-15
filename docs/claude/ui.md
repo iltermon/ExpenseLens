@@ -4,7 +4,7 @@
 
 | Package | Contents |
 |---|---|
-| `ui/` | `ExpenseLensViewModel` (lists, tabs, CRUD, import; also defines `ImportStatus`), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
+| `ui/` | `ExpenseLensViewModel` (lists, tabs, CRUD), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
 | `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
@@ -12,11 +12,11 @@
 | `ui/analytics/` | `AnalyticsScreen`, `AnalyticsViewModel`, pure `AnalyticsCalculations.kt` (see [analytics.md](analytics.md)) |
 | `ui/components/` | Shared composables (`ExpenseItemRow`, `SwipeToRevealRow`, `TabScreenShell`/`SummaryBar`, `FilterBottomSheet`, ...) |
 | `ui/util/` | Currency formatting, `LocaleManager`, `LocalizedLabels`, `SankeyMapper` |
-| `ui/dev/` | Excel importer (dev only) |
+| `ui/dev/` | Excel importer + `ImportViewModel` (kept in release builds) |
 
 **File organisation: one concept per file** (Kotlin convention, not one class per file):
 1. A file is named after its main type; everything else in it exists only to serve that type
-   (e.g. result types live in `AnalyticsCalculations.kt`).
+   (e.g. `ImportStatus` lives in `ImportViewModel.kt`, result types in `AnalyticsCalculations.kt`).
 2. A type used **across several features** gets its own file (e.g. `DateRange.kt`,
    `data/CounterpartyChoice.kt`), so it can be found without knowing where it was first written.
 3. Split a file when it passes ~300–400 lines or starts covering a second topic.
@@ -29,14 +29,18 @@ screens use it too.
 
 ## ViewModels
 
-Both ViewModels are created in `MainActivity` (`by viewModels`) and passed down through
+Three ViewModels, all created in `MainActivity` (`by viewModels`) and passed down through
 `AppNavigation`; they share one lifetime (the activity's ViewModelStore):
 
 - `ExpenseLensViewModel`: entity lists, the shared `period`, Expenses/Income tab items with filter
-  and sort, save/delete pass-throughs, `togglePaid`, Excel import, `refreshAutoPayments` (called
-  from `onResume`).
+  and sort, save/delete pass-throughs, `togglePaid`, `refreshAutoPayments` (called from `onResume`).
 - `AnalyticsViewModel(repository, period)`: gets the **same** `PeriodSelection` instance, so month
   changes stay in sync with the Expenses/Income tabs. Year mode is its own state.
+- `ImportViewModel`: Excel import and "clear transactions" for Settings. Its `busy` flag and the main
+  one both drive the blocking overlay in `AppNavigation`.
+
+Counterparty resolution for saves lives in the repository (`saveTransaction(t, choice)` etc.), not
+in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
 
 ## Data flow
 
@@ -57,8 +61,6 @@ Both ViewModels are created in `MainActivity` (`by viewModels`) and passed down 
   survive switching tabs.
 - Saves go through `CounterpartySaveController`. Typing a new counterparty name creates the
   counterparty; picking an existing one whose defaults differ prompts "update defaults?".
-- The resulting `CounterpartyChoice` (in `data/`) is resolved by the repository's
-  `saveTransaction(t, choice)` etc., in the same DB transaction as the row write.
 - `rememberFormBackGate` / `rememberUnsavedChangesBackGuard` handle the unsaved-changes prompt on back.
 - Category pickers: `active*Categories` for new transactions, unfiltered lists for edit screens.
 - **Trimming:** `coreFieldsValid` returns the trimmed `description` (and parses a trimmed amount);

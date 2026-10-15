@@ -45,7 +45,7 @@ Changing a template's `startDate` or frequency can likewise orphan existing paym
   Flow emissions can't double-insert or bring back a series that was just deleted. It is triggered
   **explicitly**, never by observing the tables: `MainActivity.onResume` → `refreshAutoPayments()`
   (covers app start and a date change while backgrounded), and right after every template write
-  (`saveTemplate`/`updateTemplate`/`insertTemplate`) and after an import. Any new code path that
+  (`saveTemplate`/`updateTemplate`) and after an import. Any new code path that
   creates or edits templates must call it too, or past occurrences only appear on the next resume.
 
 ## Editing and deleting (`ui/components/ExpenseItemRow.kt`)

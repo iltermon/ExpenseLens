@@ -14,7 +14,7 @@ notes live in `docs/claude/`. Read only the topic file you need for the task at 
 ## Project at a glance
 
 ExpenseLens is a personal Android expense/income tracker built with Jetpack Compose, Room,
-Navigation Compose, two ViewModels (main, analytics), and Coroutines/Flow (MVVM: Room → Repository →
+Navigation Compose, three ViewModels (main, analytics, import), and Coroutines/Flow (MVVM: Room → Repository →
 ViewModel StateFlow → Composables). It has two modules: `:app`, and `:sankey`, an app-agnostic
 Canvas Sankey library. UI strings are in English (`values/`) and Turkish (`values-tr/`).
 
