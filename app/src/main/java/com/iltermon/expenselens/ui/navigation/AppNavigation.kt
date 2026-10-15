@@ -56,6 +56,7 @@ import com.iltermon.expenselens.ui.transactions.AddIncomeScreen
 import com.iltermon.expenselens.ui.transactions.EditTransactionScreen
 import com.iltermon.expenselens.ui.transactions.ExpensesScreen
 import com.iltermon.expenselens.ui.transactions.IncomeScreen
+import com.iltermon.expenselens.ui.analytics.AnalyticsViewModel
 
 object Routes {
     const val EXPENSES = "expenses"
@@ -89,6 +90,7 @@ private val bottomNavItems = listOf(
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     viewModel: com.iltermon.expenselens.ui.ExpenseLensViewModel,
+    analyticsViewModel: AnalyticsViewModel,
     onChangeLanguage: (String) -> Unit
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -123,7 +125,7 @@ fun AppNavigation(
             composable(Routes.ANALYTICS) {
                 TabContent {
                     AnalyticsScreen(
-                        viewModel = viewModel
+                        viewModel = analyticsViewModel
                     )
                 }
             }

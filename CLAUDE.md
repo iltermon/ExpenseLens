@@ -14,7 +14,7 @@ notes live in `docs/claude/`. Read only the topic file you need for the task at 
 ## Project at a glance
 
 ExpenseLens is a personal Android expense/income tracker built with Jetpack Compose, Room,
-Navigation Compose, a single ViewModel, and Coroutines/Flow (MVVM: Room → Repository →
+Navigation Compose, two ViewModels (main, analytics), and Coroutines/Flow (MVVM: Room → Repository →
 ViewModel StateFlow → Composables). It has two modules: `:app`, and `:sankey`, an app-agnostic
 Canvas Sankey library. UI strings are in English (`values/`) and Turkish (`values-tr/`).
 
@@ -28,7 +28,7 @@ then `./gradlew assembleDebug test`. Details are in [build.md](docs/claude/build
 | [build.md](docs/claude/build.md) | Gradle commands, JDK setup, tests |
 | [data-layer.md](docs/claude/data-layer.md) | Room entities, DAOs, repository, migrations, settings storage |
 | [recurring.md](docs/claude/recurring.md) | Recurring templates, occurrences, auto-pay, dedup, paid/unpaid editing, series delete |
-| [ui.md](docs/claude/ui.md) | ViewModel, `ExpenseItem`, navigation, package layout, forms, UI conventions |
+| [ui.md](docs/claude/ui.md) | ViewModels, `ExpenseItem`, navigation, package layout, forms, UI conventions |
 | [analytics.md](docs/claude/analytics.md) | Analytics screen, summary totals, Sankey mapping and the `:sankey` module |
 | [workflow.md](docs/claude/workflow.md) | Issue tracking, branches, roadmap phases |
 

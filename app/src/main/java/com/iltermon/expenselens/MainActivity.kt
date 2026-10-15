@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.iltermon.expenselens.data.ExpenseLensDatabase
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
+import com.iltermon.expenselens.ui.analytics.AnalyticsViewModel
 import com.iltermon.expenselens.ui.util.LocalCurrencySymbol
 import com.iltermon.expenselens.ui.util.LocaleManager
 import com.iltermon.expenselens.ui.theme.ExpenseLensTheme
@@ -40,8 +41,11 @@ class MainActivity : AppCompatActivity() {
 
     // Created here rather than inside setContent so onResume can reach it; Compose screens receive
     // this same instance (it lives in the activity's ViewModelStore and survives rotation).
-    private val viewModel: ExpenseLensViewModel by viewModels {
-        ExpenseLensViewModel.factory(ExpenseLensRepository(ExpenseLensDatabase.getDatabase(this)))
+    private val repository by lazy { ExpenseLensRepository(ExpenseLensDatabase.getDatabase(this)) }
+    private val viewModel: ExpenseLensViewModel by viewModels { ExpenseLensViewModel.factory(repository) }
+    // Shares the main ViewModel's month selection; both live in the same ViewModelStore.
+    private val analyticsViewModel: AnalyticsViewModel by viewModels {
+        AnalyticsViewModel.factory(repository, viewModel.period)
     }
 
     // Apply the saved language to the whole activity before any UI is created.
@@ -69,6 +73,7 @@ class MainActivity : AppCompatActivity() {
                         AppNavigation(
                             navController = navController,
                             viewModel = viewModel,
+                            analyticsViewModel = analyticsViewModel,
                             onChangeLanguage = { tag ->
                                 restarting = true
                                 LocaleManager.setLanguageTag(this@MainActivity, tag)

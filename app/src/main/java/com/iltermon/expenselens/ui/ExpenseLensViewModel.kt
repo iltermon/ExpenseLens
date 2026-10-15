@@ -24,10 +24,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
-import java.time.Year
 import java.time.YearMonth
-
-enum class AnalyticsPeriod { MONTH, YEAR }
 
 /** Outcome of an import/clear, kept structured so the UI can localize the message. */
 sealed interface ImportStatus {
@@ -191,64 +188,9 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
     fun setIncomeSort(key: SortKey) { _incomeSort.update { it.tapped(key) } }
 
-    // --- Analytics tab: in MONTH mode it shares the global month/range with the Expenses/Income
-    // tabs (changing the month anywhere moves all three); the YEAR mode is Analytics-only. ---
-    private val _analyticsPeriod = MutableStateFlow(AnalyticsPeriod.MONTH)
-    val analyticsPeriod: StateFlow<AnalyticsPeriod> = _analyticsPeriod.asStateFlow()
-
-    private val _analyticsYear = MutableStateFlow(Year.now())
-    val analyticsYear: StateFlow<Year> = _analyticsYear.asStateFlow()
-
-    private val analyticsDateRange: StateFlow<DateRange> = combine(
-        _analyticsPeriod, period.dateRange, _analyticsYear
-    ) { mode, globalRange, year ->
-        when (mode) {
-            AnalyticsPeriod.MONTH -> globalRange
-            AnalyticsPeriod.YEAR -> DateRange(year.atDay(1), year.atDay(year.length()))
-        }
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS),
-        DateRange(YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth())
-    )
-
-    val analyticsItems: StateFlow<List<ExpenseItem>> = combine(
-        allTransactions,
-        allTemplates,
-        analyticsDateRange
-    ) { transactions, templates, range ->
-        mergeItems(transactions.inRange(range), templates, range)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
-
-    fun setAnalyticsPeriod(mode: AnalyticsPeriod) {
-        _analyticsPeriod.value = mode
-    }
-
-    fun analyticsPrevious() {
-        when (_analyticsPeriod.value) {
-            AnalyticsPeriod.MONTH -> goToPreviousMonth()
-            AnalyticsPeriod.YEAR -> _analyticsYear.value = _analyticsYear.value.minusYears(1)
-        }
-    }
-
-    fun analyticsNext() {
-        when (_analyticsPeriod.value) {
-            AnalyticsPeriod.MONTH -> goToNextMonth()
-            AnalyticsPeriod.YEAR -> _analyticsYear.value = _analyticsYear.value.plusYears(1)
-        }
-    }
-
     fun goToPreviousMonth() = period.previousMonth()
 
     fun goToNextMonth() = period.nextMonth()
-
-    /** Jump the (shared) month directly, e.g. from the Analytics period picker. */
-    fun setAnalyticsMonth(month: YearMonth) = period.setMonth(month)
-
-    /** Jump the Analytics-only year directly. */
-    fun setAnalyticsYear(year: Year) {
-        _analyticsYear.value = year
-    }
 
     fun selectDateRange(start: LocalDate, end: LocalDate) = period.selectRange(start, end)
 

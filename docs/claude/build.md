@@ -29,4 +29,5 @@ This isn't stored in `gradle.properties` or `local.properties`.
 - `app/src/test/.../data/OccurrencesInRangeTest.kt`: recurrence expansion (month-end clamping,
   intervals, units, end cap, range edges, jump-ahead).
 - `app/src/test/.../ui/MergeItemsTest.kt`: projection + `(templateId, date)` dedup.
+- `app/src/test/.../ui/AnalyticsCalculationsTest.kt`: summary totals and category/account/store rows.
 - `app/src/test/.../ui/PeriodSelectionTest.kt`: shared month / custom range.
