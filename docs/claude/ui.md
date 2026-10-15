@@ -4,7 +4,7 @@
 
 | Package | Contents |
 |---|---|
-| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `ImportStatus`) and `ExpenseItems.kt` (`ExpenseItem`, `DateRange`, and the pure `mergeItems`/`inRange` logic) |
+| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `ImportStatus`), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
 | `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
@@ -13,6 +13,13 @@
 | `ui/components/` | Shared composables (`ExpenseItemRow`, `SwipeToRevealRow`, `TabScreenShell`/`SummaryBar`, `FilterBottomSheet`, ...) |
 | `ui/util/` | Currency formatting, `LocaleManager`, `LocalizedLabels`, `SankeyMapper` |
 | `ui/dev/` | Excel importer (dev only) |
+
+**File organisation: one concept per file** (Kotlin convention, not one class per file):
+1. A file is named after its main type; everything else in it exists only to serve that type
+   (e.g. `ExpenseItems.kt` holds `ExpenseItem` and the logic that builds it).
+2. A type used **across several features** gets its own file (e.g. `DateRange.kt`,
+   `data/CounterpartyChoice.kt`), so it can be found without knowing where it was first written.
+3. Split a file when it passes ~300–400 lines or starts covering a second topic.
 
 **Convention:** shared or generic composables belong in `ui/components/`, never in a
 screen-specific file. Some are still in the wrong place: `DatePickerField` is in `RecurringForm.kt`,
@@ -25,14 +32,15 @@ screens use it too.
 - The ViewModel is created in `MainActivity` (`by viewModels`) so `onResume` can reach it; screens
   get the same instance passed down through `AppNavigation`.
 
-- `expenseItems` = one `combine(allTransactions, allTemplates, _dateRange)` that filters to the
+- `expenseItems` = one `combine(allTransactions, allTemplates, period.dateRange)` that filters to the
   range and calls `mergeItems`. Range filtering must stay **inside** that combine: a separately
   filtered upstream flow lags a period change by one emission, so the new period's occurrences get
   projected against the old period's payments, and recurring rows flash for a frame.
 - `expensesTabItems` / `incomeTabItems` apply per-tab filter and sort state
   (`TransactionItemFiltering.kt`) **after** the merge.
-- Analytics has its own `analyticsDateRange`. MONTH mode shares the global month; YEAR mode is
-  Analytics-only.
+- `period` (`PeriodSelection`) holds the month and optional custom range shared by Expenses,
+  Income and Analytics month mode. Analytics' `analyticsDateRange` uses it in MONTH mode; YEAR mode
+  is Analytics-only.
 - `ExpenseItem` is the UI model that unifies transactions and projected occurrences
   (see [recurring.md](recurring.md)).
 

@@ -38,4 +38,5 @@ then `./gradlew assembleDebug test`. Details are in [build.md](docs/claude/build
 - A recurring occurrence is "recorded" when a transaction with the same `(templateId, date)`
   exists; a unique DB index enforces this.
 - `enableEdgeToEdge()` is on, so bottom UI needs `navigationBarsPadding()`.
-- Shared composables go in `ui/components/`, never in a screen file.
+- One concept per file; shared composables go in `ui/components/`, never in a screen file
+  (rules in [ui.md](docs/claude/ui.md)).
