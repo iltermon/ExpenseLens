@@ -12,6 +12,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -20,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.ui.components.BackButton
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +34,8 @@ fun AddIncomeScreen(
     val counterparties by viewModel.counterparties.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
+    // One date for both tabs: the one-time date becomes the recurring start date and vice versa.
+    var date by remember { mutableStateOf(LocalDate.now()) }
     val sharedFields = rememberTransactionFormState()
     val gate = rememberFormBackGate()
     val sharedBaseline = rememberSharedBaseline(sharedFields, ready = true)
@@ -57,6 +61,8 @@ fun AddIncomeScreen(
 
             if (selectedTab == 0) {
                 OneTimeTransactionForm(
+                    initialDate = date,
+                    onDateChange = { date = it },
                     categories = incomeCategories,
                     accounts = accounts,
                     isExpense = false,
@@ -71,6 +77,8 @@ fun AddIncomeScreen(
                 )
             } else {
                 RecurringForm(
+                    initialStartDate = date,
+                    onStartDateChange = { date = it },
                     categories = incomeCategories,
                     accounts = accounts,
                     isExpense = false,

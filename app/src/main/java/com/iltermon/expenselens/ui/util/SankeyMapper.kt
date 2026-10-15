@@ -11,19 +11,18 @@ data class SankeyChartData(val incomes: List<SankeyEntry>, val outputs: List<San
 
 private const val UNASSIGNED_ID = "__unassigned__"
 private const val OTHER_ID = "__other__"
+private const val INCOME_ID_PREFIX = "in:"
 
 /** Income categories contributing less than this share of total income are folded into "Other". */
 private const val INCOME_MIN_SHARE = 0.10
 
 /**
- * Aggregate [items] into Sankey nodes. Semantics mirror `AnalyticsScreen.netOf` so the diagram
- * agrees with the spending cards:
+ * Aggregate [items] into Sankey nodes. Totals use the same definition as the Analytics summary card,
+ * so the diagram's two sides always sum to the card's "Income" and "Expenses":
  *
- * - **Income column** (all modes): non-expense items posted to an income-only category, grouped by
- *   category. Refunds and non-income-only incomes are *not* income here.
- * - **Output column**: expenses add; refund-incomes (non-expense items in an expense/"both"
- *   category) subtract, exactly as `netOf` treats them. Grouped by [mode]; buckets that net to
- *   zero or below are dropped.
+ * - **Income column** (all modes): every non-expense item, grouped by category. Income in an
+ *   expense/"both" category (e.g. a refund) is still income here.
+ * - **Output column**: every expense, grouped by [mode].
  *
  * Each side is sorted by amount descending and folded to at most [maxNodesPerSide] entries, with the
  * tail collapsed into a single [otherLabel] node. Colors are left null so the library assigns them.
@@ -31,7 +30,6 @@ private const val INCOME_MIN_SHARE = 0.10
 fun buildSankeyData(
     items: List<ExpenseItem>,
     mode: SankeyOutputMode,
-    incomeOnlyCategoryIds: Set<Int>,
     categoryNames: Map<Int, String>,
     accountNames: Map<Int, String>,
     counterpartyNames: Map<Int, String>,
@@ -39,41 +37,36 @@ fun buildSankeyData(
     otherLabel: String,
     maxNodesPerSide: Int = 6,
 ): SankeyChartData {
-    // --- Income side: real income only (income-only categories), grouped by category. ---
-    val incomeTotals = LinkedHashMap<Int, Double>()
+    // --- Income side: all income, grouped by category. ---
+    val incomeTotals = LinkedHashMap<String, Pair<String, Double>>() // key -> (label, total)
     for (item in items) {
         if (item.isExpense) continue
-        val catId = item.categoryId ?: continue
-        if (catId !in incomeOnlyCategoryIds) continue
-        incomeTotals[catId] = (incomeTotals[catId] ?: 0.0) + item.amount
+        val (key, label) = outputBucket(item, SankeyOutputMode.CATEGORY, categoryNames, accountNames, counterpartyNames, unassignedLabel)
+        incomeTotals[key] = label to ((incomeTotals[key]?.second ?: 0.0) + item.amount)
     }
     val incomes = incomeTotals
-        .filter { it.value > 0.0 }
-        .map { (catId, amount) ->
-            SankeyEntry("c$catId", categoryNames[catId] ?: unassignedLabel, amount)
-        }
+        .filter { it.value.second > 0.0 }
+        .map { (key, labelAmount) -> SankeyEntry(key, labelAmount.first, labelAmount.second) }
     val incomeTotal = incomes.sumOf { it.amount }
 
-    // --- Output side: net spend per bucket (expenses add, refunds subtract). ---
-    val outputTotals = LinkedHashMap<String, Pair<String, Double>>() // key -> (label, net)
+    // --- Output side: all expenses, grouped by the active mode. ---
+    val outputTotals = LinkedHashMap<String, Pair<String, Double>>() // key -> (label, total)
     for (item in items) {
-        val isRefund = !item.isExpense && (item.categoryId == null || item.categoryId !in incomeOnlyCategoryIds)
-        if (!item.isExpense && !isRefund) continue // real income belongs to the income column
-        val signed = if (item.isExpense) item.amount else -item.amount
-
+        if (!item.isExpense) continue
         val (key, label) = outputBucket(item, mode, categoryNames, accountNames, counterpartyNames, unassignedLabel)
-        val prev = outputTotals[key]
-        outputTotals[key] = label to ((prev?.second ?: 0.0) + signed)
+        outputTotals[key] = label to ((outputTotals[key]?.second ?: 0.0) + item.amount)
     }
     val outputs = outputTotals
         .filter { it.value.second > 0.0 }
         .map { (key, labelAmount) -> SankeyEntry(key, labelAmount.first, labelAmount.second) }
 
     return SankeyChartData(
+        // The diagram resolves both sides through one id map, so income ids get their own prefix:
+        // a "both" category (or "Other"/"Unassigned") can appear on each side.
         incomes = foldTopN(
             incomes.sortedByDescending { it.amount }, maxNodesPerSide, otherLabel,
             minAmount = incomeTotal * INCOME_MIN_SHARE,
-        ),
+        ).map { it.copy(id = INCOME_ID_PREFIX + it.id) },
         outputs = foldTopN(outputs.sortedByDescending { it.amount }, maxNodesPerSide, otherLabel),
     )
 }

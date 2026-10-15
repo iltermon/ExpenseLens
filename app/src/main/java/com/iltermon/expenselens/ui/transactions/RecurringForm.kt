@@ -42,7 +42,9 @@ import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
+import com.iltermon.expenselens.data.RecurrenceRangeError
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
+import com.iltermon.expenselens.data.recurrenceRangeError
 import com.iltermon.expenselens.ui.CounterpartyChoice
 import com.iltermon.expenselens.ui.util.frequencyUnitLabel
 import java.time.Instant
@@ -67,7 +69,9 @@ internal fun RecurringForm(
     saveLabel: String? = null,
     counterparties: List<Counterparty> = emptyList(),
     gate: FormBackGate? = null,
-    sharedBaseline: SharedBaseline? = null
+    sharedBaseline: SharedBaseline? = null,
+    // Reports start-date picks so the Add screen can carry the date over to the one-time tab.
+    onStartDateChange: (LocalDate) -> Unit = {}
 ) {
     var frequencyInterval by remember { mutableStateOf(initialInterval.toString()) }
     var frequencyUnit by remember {
@@ -83,6 +87,7 @@ internal fun RecurringForm(
     val intervalInt = frequencyInterval.toIntOrNull()?.coerceAtLeast(1) ?: 1
     var autoPayment by remember { mutableStateOf(initialAutoPayment) }
     var showErrors by remember { mutableStateOf(false) }
+    val rangeError = if (isFinite) recurrenceRangeError(startDate, endDate, intervalInt, frequencyUnit) else null
     val saveController = rememberCounterpartySaveController<RecurringTransactionTemplate>()
     val localBaseline = remember {
         RecurringLocalBaseline(
@@ -98,9 +103,9 @@ internal fun RecurringForm(
     fun performSave() {
         showErrors = true
         val validation = coreFieldsValid(shared)
-        if (!validation.isValid) return
+        if (!validation.isValid || rangeError != null) return
         val template = RecurringTransactionTemplate(
-            description = shared.description,
+            description = validation.description,
             amount = validation.amountValue!!,
             categoryId = shared.selectedCategory!!.id,
             startDate = startDate.toString(),
@@ -187,7 +192,14 @@ internal fun RecurringForm(
             }
         }
 
-        DatePickerField(label = stringResource(R.string.form_start_date), value = startDate, onValueChange = { startDate = it })
+        DatePickerField(
+            label = stringResource(R.string.form_start_date),
+            value = startDate,
+            onValueChange = {
+                startDate = it
+                onStartDateChange(it)
+            }
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -199,7 +211,16 @@ internal fun RecurringForm(
         }
 
         if (isFinite) {
-            DatePickerField(label = stringResource(R.string.form_end_date), value = endDate, onValueChange = { endDate = it })
+            DatePickerField(
+                label = stringResource(R.string.form_end_date),
+                value = endDate,
+                onValueChange = { endDate = it },
+                errorText = when (rangeError.takeIf { showErrors }) {
+                    RecurrenceRangeError.END_BEFORE_START -> stringResource(R.string.recurring_error_end_before_start)
+                    RecurrenceRangeError.NEVER_REPEATS -> stringResource(R.string.recurring_error_never_repeats)
+                    null -> null
+                }
+            )
         }
 
         Row(
@@ -240,7 +261,13 @@ private data class RecurringLocalBaseline(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DatePickerField(label: String, value: LocalDate, onValueChange: (LocalDate) -> Unit) {
+internal fun DatePickerField(
+    label: String,
+    value: LocalDate,
+    onValueChange: (LocalDate) -> Unit,
+    enabled: Boolean = true,
+    errorText: String? = null
+) {
     var showDialog by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = value.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
@@ -252,9 +279,12 @@ internal fun DatePickerField(label: String, value: LocalDate, onValueChange: (Lo
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            enabled = enabled,
+            isError = errorText != null,
+            supportingText = errorText?.let { { Text(it) } },
             modifier = Modifier.fillMaxWidth()
         )
-        Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
+        if (enabled) Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
     }
 
     if (showDialog) {

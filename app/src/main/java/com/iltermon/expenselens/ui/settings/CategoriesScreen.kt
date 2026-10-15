@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +48,7 @@ import com.iltermon.expenselens.ui.components.DeleteWithReassignDialog
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.util.LocalCurrencySymbol
 import com.iltermon.expenselens.ui.components.BackButton
+import com.iltermon.expenselens.ui.transactions.UnsavedChangesDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,7 +212,8 @@ private fun CategoryDialog(initial: Category?, onDismiss: () -> Unit, onConfirm:
                         readOnly = true,
                         label = { Text(stringResource(R.string.category_appears_in)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
+
                     )
                     ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.category_type_both)) }, onClick = { type = null; typeExpanded = false })

@@ -235,6 +235,12 @@
     <!-- Delete dialogs (list rows) -->
     <string name="delete_recurring_title">Delete recurring \"%1$s\"?</string>
     <string name="delete_recurring_message">Removes the recurring payment and every entry it created. To stop it going forward instead, edit it and set an end date.</string>
+    <string name="edit_choice_title">Edit \"%1$s\"</string>
+    <string name="edit_choice_message">This payment is part of a recurring series. Edit just this payment, or the whole series?</string>
+    <string name="edit_choice_this_payment">This payment</string>
+    <string name="edit_choice_whole_series">Whole series</string>
+    <string name="recurring_error_end_before_start">End date can\'t be before the start date</string>
+    <string name="recurring_error_never_repeats">With this frequency the series ends before it repeats. Pick a later end date or a shorter interval.</string>
     <string name="delete_transaction_title">Delete transaction?</string>
     <string name="delete_transaction_message">\"%1$s\" will be permanently removed.</string>
 

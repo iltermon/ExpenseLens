@@ -234,6 +234,12 @@
     <!-- Delete dialogs (list rows) -->
     <string name="delete_recurring_title">\"%1$s\" tekrarlayan kaydı silinsin mi?</string>
     <string name="delete_recurring_message">Tekrarlayan ödemeyi ve oluşturduğu tüm kayıtları siler. Bunun yerine ileriye dönük durdurmak için düzenleyip bir bitiş tarihi belirleyin.</string>
+    <string name="edit_choice_title">\"%1$s\" düzenle</string>
+    <string name="edit_choice_message">Bu ödeme tekrarlayan bir ödemenin parçası. Yalnızca bu ödemeyi mi, yoksa tüm tekrarlayan ödemeyi mi düzenlemek istiyorsunuz?</string>
+    <string name="edit_choice_this_payment">Bu ödeme</string>
+    <string name="edit_choice_whole_series">Tüm seri</string>
+    <string name="recurring_error_end_before_start">Bitiş tarihi başlangıç tarihinden önce olamaz</string>
+    <string name="recurring_error_never_repeats">Bu sıklıkla seri tekrarlanmadan sona eriyor. Daha geç bir bitiş tarihi veya daha kısa bir aralık seçin.</string>
     <string name="delete_transaction_title">İşlem silinsin mi?</string>
     <string name="delete_transaction_message">\"%1$s\" kalıcı olarak silinecek.</string>
 

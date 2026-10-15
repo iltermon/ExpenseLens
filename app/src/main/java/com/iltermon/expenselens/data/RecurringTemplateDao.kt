@@ -8,6 +8,9 @@ interface RecurringTemplateDao {
     @Query("SELECT * FROM recurring_templates")
     fun getAllTemplates(): Flow<List<RecurringTransactionTemplate>>
 
+    @Query("SELECT * FROM recurring_templates WHERE autoPayment = 1")
+    suspend fun getAutoPaymentTemplates(): List<RecurringTransactionTemplate>
+
     @Query("SELECT * FROM recurring_templates WHERE id = :id")
     suspend fun getById(id: Int): RecurringTransactionTemplate?
 

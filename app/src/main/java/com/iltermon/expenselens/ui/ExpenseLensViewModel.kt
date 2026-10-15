@@ -75,51 +75,16 @@ sealed interface ImportStatus {
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
 
     init {
-        // Auto-pay: for every auto-payment template, insert a paid transaction for each
-        // due occurrence from its start date up to (and including) today. Matching is by
-        // (templateId, date) so it's idempotent and frequency-aware.
+        // Auto-pay: whenever templates or transactions change, record a paid transaction for each
+        // due occurrence of every auto-payment template. The repository reads fresh state inside a
+        // single DB transaction, so stale emissions here (e.g. Room's backlog during a bulk import)
+        // can't cause double inserts or resurrect a just-deleted series.
         viewModelScope.launch {
             combine(
                 repository.getAllTemplates(),
                 repository.getAllTransactions()
-            ) { templates, transactions -> templates to transactions }
-               .collect { (templates, _) ->
-                    val today = LocalDate.now()
-                    val autoTemplates = templates.filter { it.autoPayment }
-                    if (autoTemplates.isEmpty()) return@collect
-
-                    // Idempotency snapshot. The `transactions` value from the combine above can
-                    // lag behind rows we inserted on a previous firing — during a bulk import Room
-                    // emits a backlog of stale lists, so trusting it re-inserts the same occurrence
-                    // 2–3×. Read a fresh authoritative set instead: collect is sequential, so by the
-                    // time this runs the prior firing's inserts have committed and show up here.
-                    val existingKeys = repository.getAllTransactions().first()
-                        .filter { it.templateId != null }
-                        .mapTo(HashSet()) { it.templateId to it.date }
-
-                    autoTemplates.forEach { template ->
-                        template.occurrencesInRange(LocalDate.parse(template.startDate), today)
-                            .forEach { date ->
-                                val dateStr = date.toString()
-                                val key = template.id to dateStr
-                                if (existingKeys.add(key)) {
-                                    repository.insertTransaction(
-                                        Transaction(
-                                            description = template.description,
-                                            amount = template.amount,
-                                            categoryId = template.categoryId,
-                                            date = dateStr,
-                                            isExpense = template.isExpense,
-                                            isPaid = true,
-                                            accountId = template.accountId,
-                                            templateId = template.id,
-                                            counterpartyId = template.counterpartyId
-                                        )
-                                    )
-                                }
-                            }
-                    }
-                }
+            ) { _, _ -> Unit }
+                .collect { repository.materializeAutoPayments(LocalDate.now()) }
         }
     }
 
@@ -139,15 +104,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         r.start != m.atDay(1) || r.end != m.atEndOfMonth()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), false)
 
-    val filteredTransactions: StateFlow<List<Transaction>> = combine(
-        repository.getAllTransactions(),
-        _dateRange
-    ) { transactions, range ->
-        transactions.filter { transaction ->
-            val date = LocalDate.parse(transaction.date)
-            date >= range.start && date <= range.end
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+    // One shared collection of the transactions table. Range filtering happens inside the same
+    // combine that merges in the templates, never in a separate upstream flow: otherwise a period
+    // change reaches the merge before the re-filtered list does, and for a frame the new period's
+    // occurrences are projected against the old period's payments ("recurring" rows flash up).
+    private val allTransactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+
+    private fun List<Transaction>.inRange(range: DateRange): List<Transaction> = filter { transaction ->
+        val date = LocalDate.parse(transaction.date)
+        date >= range.start && date <= range.end
+    }
 
     val accounts: StateFlow<List<Account>> = repository.getAllAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
@@ -271,11 +238,11 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
 
     val expenseItems: StateFlow<List<ExpenseItem>> = combine(
-        filteredTransactions,
+        allTransactions,
         allTemplates,
         _dateRange
     ) { transactions, templates, range ->
-        mergeItems(transactions, templates, range)
+        mergeItems(transactions.inRange(range), templates, range)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     // --- Per-tab filter & sort (independent Expenses vs Income), layered on top of the date range.
@@ -343,22 +310,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         DateRange(YearMonth.now().atDay(1), YearMonth.now().atEndOfMonth())
     )
 
-    private val analyticsFilteredTransactions: StateFlow<List<Transaction>> = combine(
-        repository.getAllTransactions(),
-        analyticsDateRange
-    ) { transactions, range ->
-        transactions.filter { transaction ->
-            val date = LocalDate.parse(transaction.date)
-            date >= range.start && date <= range.end
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
-
     val analyticsItems: StateFlow<List<ExpenseItem>> = combine(
-        analyticsFilteredTransactions,
+        allTransactions,
         allTemplates,
         analyticsDateRange
     ) { transactions, templates, range ->
-        mergeItems(transactions, templates, range)
+        mergeItems(transactions.inRange(range), templates, range)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     fun setAnalyticsPeriod(mode: AnalyticsPeriod) {
@@ -603,14 +560,14 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                         date = item.date,
                         isExpense = item.isExpense,
                         isPaid = true,
+                        accountId = item.accountId,
                         templateId = item.templateId,
                         counterpartyId = item.counterpartyId
                     )
                 )
             } else {
                 item.transactionId?.let { id ->
-                    val transaction = filteredTransactions.value.find { it.id == id }
-                    transaction?.let {
+                    repository.getTransactionById(id)?.let {
                         repository.updateTransaction(it.copy(isPaid = !it.isPaid))
                     }
                 }

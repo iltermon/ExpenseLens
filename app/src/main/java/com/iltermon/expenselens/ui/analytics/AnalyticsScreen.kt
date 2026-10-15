@@ -189,7 +189,6 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
 
                 SpendingFlowCard(
                     items = items,
-                    incomeOnlyCategoryIds = incomeOnlyCategoryIds,
                     categoryNames = categoryNames,
                     accountNames = accounts.associate { it.id to it.name },
                     counterpartyNames = counterparties.associate { it.id to it.name },
@@ -497,7 +496,6 @@ private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {
 @Composable
 private fun SpendingFlowCard(
     items: List<ExpenseItem>,
-    incomeOnlyCategoryIds: Set<Int>,
     categoryNames: Map<Int, String>,
     accountNames: Map<Int, String>,
     counterpartyNames: Map<Int, String>,
@@ -510,9 +508,9 @@ private fun SpendingFlowCard(
     val unassignedLabel = stringResource(R.string.analytics_sankey_unassigned)
     val otherLabel = stringResource(R.string.analytics_sankey_other)
 
-    val data = remember(items, mode, incomeOnlyCategoryIds, categoryNames, accountNames, counterpartyNames, unassignedLabel, otherLabel) {
+    val data = remember(items, mode, categoryNames, accountNames, counterpartyNames, unassignedLabel, otherLabel) {
         buildSankeyData(
-            items, mode, incomeOnlyCategoryIds, categoryNames, accountNames, counterpartyNames,
+            items, mode, categoryNames, accountNames, counterpartyNames,
             unassignedLabel, otherLabel,
         )
     }
