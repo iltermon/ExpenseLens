@@ -1,7 +1,5 @@
 package com.iltermon.expenselens.ui
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,35 +10,15 @@ import com.iltermon.expenselens.data.CounterpartyChoice
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.Transaction
-import com.iltermon.expenselens.ui.dev.DataImporter
-import com.iltermon.expenselens.ui.dev.XlsxReader
 import com.iltermon.expenselens.ui.transactions.ListFilterState
 import com.iltermon.expenselens.ui.transactions.SortKey
 import com.iltermon.expenselens.ui.transactions.SortState
 import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
-
-/** Outcome of an import/clear, kept structured so the UI can localize the message. */
-sealed interface ImportStatus {
-    data object Importing : ImportStatus
-    data class Imported(
-        val expenses: Int,
-        val income: Int,
-        val templates: Int,
-        val accounts: Int,
-        val categories: Int
-    ) : ImportStatus
-    data class ImportFailed(val message: String?) : ImportStatus
-    data object Clearing : ImportStatus
-    data object Cleared : ImportStatus
-    data class ClearFailed(val message: String?) : ImportStatus
-}
 
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
 
@@ -241,8 +219,23 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.mergeCounterparties(source, target) }
     }
 
+    fun updateTransaction(transaction: Transaction) {
+        viewModelScope.launch { repository.updateTransaction(transaction) }
+    }
+
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch { repository.deleteTransaction(transaction) }
+    }
+
     fun deleteTransactionById(id: Int) {
         launchBusy { repository.deleteTransactionById(id) }
+    }
+
+    fun updateTemplate(template: RecurringTransactionTemplate) {
+        viewModelScope.launch {
+            repository.updateTemplate(template)
+            repository.materializeAutoPayments(LocalDate.now())
+        }
     }
 
     fun deleteTemplate(template: RecurringTransactionTemplate) {
@@ -288,47 +281,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         launchBusy { repository.deleteCategory(category, reassignTo) }
     }
 
-    // Dev-only: one-time import of the user's ExpenseLens.xlsx (Settings → Developer Options).
-    private val _importStatus = MutableStateFlow<ImportStatus?>(null)
-    val importStatus: StateFlow<ImportStatus?> = _importStatus.asStateFlow()
-
-    fun importFromUri(context: Context, uri: Uri) {
-        viewModelScope.launch {
-            _importStatus.value = ImportStatus.Importing
-            try {
-                // Run the whole pipeline off the main thread: clearAll() (RoomDatabase.clearAllTables)
-                // is a blocking call and would otherwise crash with "cannot access database on the
-                // main thread".
-                val r = withContext(Dispatchers.IO) {
-                    val sheets = XlsxReader.read(context, uri)
-                    DataImporter.import(repository, sheets)
-                        .also { repository.materializeAutoPayments(LocalDate.now()) }
-                }
-                _importStatus.value = ImportStatus.Imported(
-                    expenses = r.expenses,
-                    income = r.income,
-                    templates = r.templates,
-                    accounts = r.accounts,
-                    categories = r.categories
-                )
-            } catch (e: Exception) {
-                _importStatus.value = ImportStatus.ImportFailed(e.message)
-            }
-        }
-    }
-
-    fun clearTransactions() {
-        launchBusy {
-            _importStatus.value = ImportStatus.Clearing
-            try {
-                repository.clearTransactionsAndTemplates()
-                _importStatus.value = ImportStatus.Cleared
-            } catch (e: Exception) {
-                _importStatus.value = ImportStatus.ClearFailed(e.message)
-            }
-        }
-    }
-
     fun togglePaid(item: ExpenseItem) {
         viewModelScope.launch {
             if (item.isRecurring && !item.isPaid) {
@@ -355,6 +307,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
             }
         }
     }
+
     companion object {
         private const val SUBSCRIBE_TIMEOUT_MS = 5000L
         const val KEY_CURRENCY_SYMBOL = "currency_symbol"

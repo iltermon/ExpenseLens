@@ -29,6 +29,7 @@ import com.iltermon.expenselens.data.ExpenseLensDatabase
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.analytics.AnalyticsViewModel
+import com.iltermon.expenselens.ui.dev.ImportViewModel
 import com.iltermon.expenselens.ui.util.LocalCurrencySymbol
 import com.iltermon.expenselens.ui.util.LocaleManager
 import com.iltermon.expenselens.ui.theme.ExpenseLensTheme
@@ -47,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     private val analyticsViewModel: AnalyticsViewModel by viewModels {
         AnalyticsViewModel.factory(repository, viewModel.period)
     }
+    private val importViewModel: ImportViewModel by viewModels { ImportViewModel.factory(repository) }
 
     // Apply the saved language to the whole activity before any UI is created.
     override fun attachBaseContext(newBase: Context) {
@@ -74,6 +76,7 @@ class MainActivity : AppCompatActivity() {
                             navController = navController,
                             viewModel = viewModel,
                             analyticsViewModel = analyticsViewModel,
+                            importViewModel = importViewModel,
                             onChangeLanguage = { tag ->
                                 restarting = true
                                 LocaleManager.setLanguageTag(this@MainActivity, tag)

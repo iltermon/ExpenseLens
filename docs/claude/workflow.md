@@ -18,9 +18,12 @@
    #30 structural refactors, #31 nice-to-haves.
 
 Phase 1 (#14, #15, #18, #20, #21) is merged (PR #34). #18 uses "all income is income, expenses
-gross" so the graph matches the summary card; a parallel Codex session's alternative definition is
-parked in #32. Don't act on it until the user picks it up.
+gross" so the graph matches the summary card; an alternative definition from an earlier Codex
+session is parked in #32. Don't act on it until the user picks it up. Codex no longer works on this
+repo (as of 2026-10-15); Claude is the only agent. The notes still must stay current in every change
+(see CLAUDE.md): they exist so each session reads one small topic file instead of re-exploring code.
 
 **Current focus: #30 structural refactor**, re-scoped into three PRs (see the issue): PR 1 safety-net
-tests + explicit auto-pay trigger (branch `refactor/review-c-pr1`), PR 2 ViewModel split, PR 3
-duplicate screens. Keep each PR reviewable; don't widen scope.
+tests + explicit auto-pay trigger (merged, #35), PR 2 ViewModel split as four stacked PRs
+(`refactor/vm-split-1-counterparty` → `-2-period` → `-3-analytics` → `-4-import`), PR 3 duplicate
+screens (to be split the same way). PRs stay small and single-purpose; see the small-PR rule.
