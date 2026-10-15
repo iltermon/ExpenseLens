@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Counterparty
-import com.iltermon.expenselens.ui.CounterpartyChoice
+import com.iltermon.expenselens.data.CounterpartyChoice
 import kotlin.math.min
 
 /**

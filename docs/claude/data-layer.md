@@ -28,6 +28,9 @@ invalidation and the auto-pay collector never sees a half-applied state:
   still equals the template's *old* value, so labels edited on a single payment survive. Amount and
   date are never touched.
 - `materializeAutoPayments(today)`: see [recurring.md](recurring.md).
+- `saveTransaction` / `updateTransaction` / `saveTemplate` / `updateTemplate` with a
+  `CounterpartyChoice`: resolve the counterparty (create it, or update its defaults) and write the
+  row in one transaction.
 - `deleteAccount` / `deleteCategory`: reassign or null references, then delete.
   `mergeCounterparties` / `deleteCounterparty` work the same way.
 - `clearTransactionsAndTemplates()`: deletes templates first, then transactions.
