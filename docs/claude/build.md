@@ -26,4 +26,6 @@ This isn't stored in `gradle.properties` or `local.properties`.
 - `app/src/androidTest/.../CategoryIdMigrationTest.kt`: Room migration test.
 - `app/src/test/.../data/RecurrenceRangeTest.kt`: finite-series range validation.
 - `app/src/test/.../ui/CoreFieldsValidationTest.kt`: trimming of description and amount.
-- No tests for `occurrencesInRange` itself yet (tracked in #28, A4).
+- `app/src/test/.../data/OccurrencesInRangeTest.kt`: recurrence expansion (month-end clamping,
+  intervals, units, end cap, range edges, jump-ahead).
+- `app/src/test/.../ui/MergeItemsTest.kt`: projection + `(templateId, date)` dedup.

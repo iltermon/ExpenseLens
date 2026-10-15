@@ -17,8 +17,10 @@
 4. **Review follow-ups** (2026-07-03 code review): #28 correctness hardening, #29 conventions,
    #30 structural refactors, #31 nice-to-haves.
 
-Branch `fix/phase1-correctness` (based on `refactor/folderStructure`) carries the phase-1 work:
-#21, #20, #18, #15 and #14 are implemented and manually tested on device. #18 uses "all income is
-income, expenses gross" so the graph matches the summary card. A parallel Codex session proposed a
-different definition (income-only sources, refunds reduce expenses, two middle hubs); that
-direction is parked under #32. Don't act on it until the user picks it up.
+Phase 1 (#14, #15, #18, #20, #21) is merged (PR #34). #18 uses "all income is income, expenses
+gross" so the graph matches the summary card; a parallel Codex session's alternative definition is
+parked in #32. Don't act on it until the user picks it up.
+
+**Current focus: #30 structural refactor**, re-scoped into three PRs (see the issue): PR 1 safety-net
+tests + explicit auto-pay trigger (branch `refactor/review-c-pr1`), PR 2 ViewModel split, PR 3
+duplicate screens. Keep each PR reviewable; don't widen scope.

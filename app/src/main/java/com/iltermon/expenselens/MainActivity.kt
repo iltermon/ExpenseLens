@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -24,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.iltermon.expenselens.data.ExpenseLensDatabase
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
@@ -38,6 +38,12 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
+    // Created here rather than inside setContent so onResume can reach it; Compose screens receive
+    // this same instance (it lives in the activity's ViewModelStore and survives rotation).
+    private val viewModel: ExpenseLensViewModel by viewModels {
+        ExpenseLensViewModel.factory(ExpenseLensRepository(ExpenseLensDatabase.getDatabase(this)))
+    }
+
     // Apply the saved language to the whole activity before any UI is created.
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleManager.wrap(newBase))
@@ -47,14 +53,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val database = ExpenseLensDatabase.getDatabase(this)
-        val repository = ExpenseLensRepository(database)
-
         setContent {
             ExpenseLensTheme {
-                val viewModel: ExpenseLensViewModel = viewModel(
-                    factory = ExpenseLensViewModel.factory(repository)
-                )
                 val currencySymbol by viewModel.currencySymbol.collectAsState()
                 val navController = rememberNavController()
 
@@ -107,6 +107,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // App start, return from background, or a date change while away: record any auto-payments
+    // that have fallen due since the last run.
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshAutoPayments()
     }
 
     /** Relaunches the app from scratch so a new language takes effect everywhere. */
