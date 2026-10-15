@@ -11,7 +11,6 @@ class SankeyMapperTest {
     private val categoryNames = mapOf(1 to "Salary", 2 to "Groceries", 3 to "Rent")
     private val accountNames = mapOf(10 to "Cash", 11 to "Bank")
     private val counterpartyNames = mapOf(20 to "Migros", 21 to "Landlord")
-    private val incomeOnly = setOf(1) // Salary is income-only
 
     private fun item(
         amount: Double,
@@ -27,11 +26,11 @@ class SankeyMapperTest {
 
     private fun build(items: List<ExpenseItem>, mode: SankeyOutputMode, maxNodes: Int = 6) =
         buildSankeyData(
-            items, mode, incomeOnly, categoryNames, accountNames, counterpartyNames,
+            items, mode, categoryNames, accountNames, counterpartyNames,
             unassignedLabel = "Unassigned", otherLabel = "Other", maxNodesPerSide = maxNodes,
         )
 
-    @Test fun `income-only items group into income nodes by category`() {
+    @Test fun `income items group into income nodes by category`() {
         val data = build(
             listOf(
                 item(1000.0, categoryId = 1, isExpense = false),
@@ -45,27 +44,49 @@ class SankeyMapperTest {
         assertTrue(data.outputs.isEmpty())
     }
 
-    @Test fun `refund income nets against expenses in the same output bucket`() {
+    @Test fun `income in an expense category is income and expenses stay gross`() {
         val data = build(
             listOf(
                 item(100.0, categoryId = 2, isExpense = true),
-                item(30.0, categoryId = 2, isExpense = false), // refund: category 2 is not income-only
+                item(30.0, categoryId = 2, isExpense = false), // e.g. a refund into Groceries
             ),
             SankeyOutputMode.CATEGORY,
         )
-        assertTrue(data.incomes.isEmpty())
-        assertEquals(1, data.outputs.size)
-        assertEquals("Groceries", data.outputs[0].label)
-        assertEquals(70.0, data.outputs[0].amount, 1e-9)
+        assertEquals("Groceries", data.incomes.single().label)
+        assertEquals(30.0, data.incomes.single().amount, 1e-9)
+        assertEquals("Groceries", data.outputs.single().label)
+        assertEquals(100.0, data.outputs.single().amount, 1e-9)
     }
 
-    @Test fun `non-income-only income that outweighs expense drops the bucket`() {
-        val data = build(
-            listOf(item(200.0, categoryId = 2, isExpense = false)),
-            SankeyOutputMode.CATEGORY,
+    @Test fun `graph totals equal the summary card totals in every mode`() {
+        // Mirrors AnalyticsScreen: income = all non-expense items, expenses = all expense items.
+        val items = listOf(
+            item(2000.0, categoryId = 1, isExpense = false, accountId = 11),
+            item(40.0, categoryId = 2, isExpense = false, accountId = 10, counterpartyId = 20), // refund
+            item(15.0, categoryId = null, isExpense = false),
+            item(900.0, categoryId = 3, accountId = 11, counterpartyId = 21),
+            item(120.0, categoryId = 2, accountId = 10, counterpartyId = 20),
+            item(30.0, categoryId = null),
         )
-        assertTrue(data.incomes.isEmpty())
-        assertTrue(data.outputs.isEmpty()) // net -200 -> dropped
+        val cardIncome = items.filter { !it.isExpense }.sumOf { it.amount }
+        val cardExpenses = items.filter { it.isExpense }.sumOf { it.amount }
+        for (mode in SankeyOutputMode.entries) {
+            val data = build(items, mode, maxNodes = 2) // force folding into "Other" too
+            assertEquals(cardIncome, data.incomes.sumOf { it.amount }, 1e-9)
+            assertEquals(cardExpenses, data.outputs.sumOf { it.amount }, 1e-9)
+        }
+    }
+
+    @Test fun `node ids are unique across both sides`() {
+        val items = listOf(
+            item(30.0, categoryId = 2, isExpense = false),
+            item(100.0, categoryId = 2),
+            item(5.0, categoryId = null, isExpense = false),
+            item(5.0, categoryId = null),
+        )
+        val data = build(items, SankeyOutputMode.CATEGORY)
+        val ids = data.incomes.map { it.id } + data.outputs.map { it.id }
+        assertEquals(ids.size, ids.toSet().size)
     }
 
     @Test fun `items without an account fall into the Unassigned bucket in ACCOUNT mode`() {
@@ -92,7 +113,7 @@ class SankeyMapperTest {
         val names = (1..8).associateWith { "Cat$it" }
         val items = (1..8).map { item((100 - it).toDouble(), categoryId = it) }
         val data = buildSankeyData(
-            items, SankeyOutputMode.CATEGORY, emptySet(), names, accountNames, counterpartyNames,
+            items, SankeyOutputMode.CATEGORY, names, accountNames, counterpartyNames,
             unassignedLabel = "Unassigned", otherLabel = "Other", maxNodesPerSide = 3,
         )
         assertEquals(3, data.outputs.size)
@@ -104,7 +125,6 @@ class SankeyMapperTest {
 
     @Test fun `income categories below 10 percent of total fold into Other`() {
         val names = (1..5).associateWith { "Inc$it" }
-        val incomeOnlyAll = setOf(1, 2, 3, 4, 5)
         // Shares of 100: 50, 30, 8, 7, 5 — the last three are each < 10%.
         val items = listOf(
             item(50.0, categoryId = 1, isExpense = false),
@@ -114,7 +134,7 @@ class SankeyMapperTest {
             item(5.0, categoryId = 5, isExpense = false),
         )
         val data = buildSankeyData(
-            items, SankeyOutputMode.CATEGORY, incomeOnlyAll, names, accountNames, counterpartyNames,
+            items, SankeyOutputMode.CATEGORY, names, accountNames, counterpartyNames,
             unassignedLabel = "Unassigned", otherLabel = "Other",
         )
         assertEquals(listOf("Inc1", "Inc2", "Other"), data.incomes.map { it.label })
@@ -131,7 +151,7 @@ class SankeyMapperTest {
 
         fun buildWithIncome(incomeAmount: Double) = buildSankeyData(
             expenses + item(incomeAmount, categoryId = 1, isExpense = false),
-            SankeyOutputMode.CATEGORY, setOf(1), names, accountNames, counterpartyNames,
+            SankeyOutputMode.CATEGORY, names, accountNames, counterpartyNames,
             unassignedLabel = "Unassigned", otherLabel = "Other", maxNodesPerSide = 3,
         )
 

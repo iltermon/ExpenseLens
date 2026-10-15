@@ -143,6 +143,8 @@ internal fun TransactionCoreFields(
  */
 internal data class CoreFieldsValidation(
     val amountValue: Double?,
+    /** The description as it should be saved: trimmed, so "Rent " and "Rent" don't diverge. */
+    val description: String,
     val amountValid: Boolean,
     val descriptionValid: Boolean,
     val categoryValid: Boolean,
@@ -154,11 +156,13 @@ internal data class CoreFieldsValidation(
 }
 
 internal fun coreFieldsValid(shared: TransactionFormState): CoreFieldsValidation {
-    val amountValue = shared.amount.toDoubleOrNull()
+    val amountValue = shared.amount.trim().toDoubleOrNull()
+    val description = shared.description.trim()
     return CoreFieldsValidation(
         amountValue = amountValue,
+        description = description,
         amountValid = amountValue != null && amountValue > 0,
-        descriptionValid = shared.description.isNotBlank(),
+        descriptionValid = description.isNotEmpty(),
         categoryValid = shared.selectedCategory != null,
         accountValid = shared.selectedAccount != null,
         counterpartyValid = shared.counterpartyName.isNotBlank()

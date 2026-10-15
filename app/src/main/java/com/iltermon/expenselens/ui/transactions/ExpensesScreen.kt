@@ -266,7 +266,9 @@ fun ExpenseItemCard(
                 Text(
                     item.description,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     if (!counterpartyName.isNullOrBlank()) "$categoryLabel · $counterpartyName" else categoryLabel,

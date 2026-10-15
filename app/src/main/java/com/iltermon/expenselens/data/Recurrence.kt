@@ -42,6 +42,33 @@ fun RecurringTransactionTemplate.occurrencesInRange(
     return result
 }
 
+/** Why a finite recurrence range can't be saved; see [recurrenceRangeError]. */
+enum class RecurrenceRangeError { END_BEFORE_START, NEVER_REPEATS }
+
+/**
+ * Validates a finite series' date range against its frequency. The end date may not precede the
+ * start date, and the range must reach the second occurrence, otherwise the "series" is a single
+ * payment (e.g. yearly with a one-month range). Returns null when the range is fine.
+ */
+fun recurrenceRangeError(
+    startDate: LocalDate,
+    endDate: LocalDate,
+    frequencyInterval: Int,
+    frequencyUnit: String
+): RecurrenceRangeError? {
+    if (endDate < startDate) return RecurrenceRangeError.END_BEFORE_START
+    val probe = RecurringTransactionTemplate(
+        description = "",
+        amount = 0.0,
+        startDate = startDate.toString(),
+        endDate = endDate.toString(),
+        isExpense = true,
+        frequencyInterval = frequencyInterval,
+        frequencyUnit = frequencyUnit
+    )
+    return if (probe.occurrencesInRange(startDate, endDate).size < 2) RecurrenceRangeError.NEVER_REPEATS else null
+}
+
 private fun RecurringTransactionTemplate.occurrenceAt(anchor: LocalDate, steps: Long): LocalDate =
     when (frequencyUnit) {
         "Day" -> anchor.plusDays(steps)

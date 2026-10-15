@@ -93,6 +93,7 @@ fun EditTransactionScreen(
                     shared = shared,
                     initialDate = LocalDate.parse(t.date),
                     initialIsPaid = t.isPaid,
+                    dateEditable = t.templateId == null,
                     counterparties = counterparties,
                     saveLabel = stringResource(R.string.action_update),
                     gate = gate,

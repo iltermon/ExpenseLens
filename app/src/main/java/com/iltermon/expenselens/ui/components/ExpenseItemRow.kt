@@ -23,8 +23,10 @@ import java.time.LocalDate
  *
  * A row is treated as part of a recurring **series** when its [com.iltermon.expenselens.ui.ExpenseItem.templateId] resolves to
  * an existing template — this covers both projected occurrences and auto-generated paid rows.
- * Editing/deleting then acts on the template. Genuine one-time rows (and orphans whose template was
- * already deleted) act on the single transaction.
+ * Deleting then acts on the whole series. Tapping a recorded payment of a series asks whether to
+ * edit just that payment or the whole series; tapping a projected occurrence edits its template
+ * (it has no row of its own yet). Genuine one-time rows (and orphans whose template was already
+ * deleted) act on the single transaction.
  *
  * Deleting is for fixing mistakes: a series delete wipes the template and every transaction it
  * generated. To merely stop a series going forward, edit it and set an end date instead.
@@ -41,6 +43,7 @@ fun ExpenseItemRow(
 ) {
     val template = item.templateId?.let { tid -> templates.find { it.id == tid } }
     var showDelete by remember { mutableStateOf(false) }
+    var showEditChoice by remember { mutableStateOf(false) }
 
     // Occurrences left in a finite series, counting this row's occurrence through the end date
     // (inclusive). Open-ended templates have no finite count, so nothing is shown.
@@ -54,12 +57,35 @@ fun ExpenseItemRow(
             item = item,
             onTogglePaid = { viewModel.togglePaid(it) },
             onClick = {
-                if (template != null) onEditTemplate(template.id)
-                else item.transactionId?.let(onEditTransaction)
+                when {
+                    item.transactionId != null && template != null -> showEditChoice = true
+                    item.transactionId != null -> onEditTransaction(item.transactionId)
+                    template != null -> onEditTemplate(template.id)
+                }
             },
             counterpartyName = item.counterpartyId?.let { counterpartyNames[it] },
             categoryName = item.categoryId?.let { categoryNames[it] },
             remainingOccurrences = remainingOccurrences
+        )
+    }
+
+    if (showEditChoice && template != null && item.transactionId != null) {
+        AlertDialog(
+            onDismissRequest = { showEditChoice = false },
+            title = { Text(stringResource(R.string.edit_choice_title, item.description)) },
+            text = { Text(stringResource(R.string.edit_choice_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showEditChoice = false
+                    onEditTemplate(template.id)
+                }) { Text(stringResource(R.string.edit_choice_whole_series)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showEditChoice = false
+                    onEditTransaction(item.transactionId)
+                }) { Text(stringResource(R.string.edit_choice_this_payment)) }
+            }
         )
     }
 

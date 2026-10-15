@@ -2,6 +2,7 @@ package com.iltermon.expenselens.data
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
 
@@ -23,6 +24,39 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
 
     suspend fun deleteTransactionById(id: Int) =
         db.transactionDao().deleteById(id)
+
+    /**
+     * Auto-pay: inserts a paid transaction for every due occurrence (start date through [today]) of
+     * every auto-payment template that doesn't have one yet. Templates and existing keys are read
+     * inside the same transaction as the inserts, so it can't interleave with [deleteSeries] and
+     * resurrect rows of a series that was just deleted. Idempotent: matching is by (templateId, date).
+     */
+    suspend fun materializeAutoPayments (today: LocalDate) = db.withTransaction {
+        val templates = db.recurringTemplateDao().getAutoPaymentTemplates()
+        if (templates.isEmpty()) return@withTransaction
+        val existingKeys = db.transactionDao().getTemplateOccurrenceKeys()
+            .mapTo(HashSet()) { it.templateId to it.date }
+        templates.forEach { template ->
+            template.occurrencesInRange(LocalDate.parse(template.startDate), today).forEach { date ->
+                val dateStr = date.toString()
+                if (existingKeys.add(template.id to dateStr)) {
+                    db.transactionDao().insert(
+                        Transaction(
+                            description = template.description,
+                            amount = template.amount,
+                            categoryId = template.categoryId,
+                            date = dateStr,
+                            isExpense = template.isExpense,
+                            isPaid = true,
+                            accountId = template.accountId,
+                            templateId = template.id,
+                            counterpartyId = template.counterpartyId
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     suspend fun updateTransaction(transaction: Transaction) =
         db.transactionDao().update(transaction)
@@ -52,8 +86,29 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
             db.transactionDao().deleteByTemplate(template.id)
         }
 
+    /**
+     * Saves an edited template and carries its description/category/account/counterparty changes
+     * over to the transactions it already generated, so a renamed or recategorised series stays
+     * consistent. Labels the user edited on an individual payment are left alone.
+     */
     suspend fun updateTemplate(template: RecurringTransactionTemplate) =
-        db.recurringTemplateDao().update(template)
+        db.withTransaction {
+            val old = db.recurringTemplateDao().getById(template.id)
+            db.recurringTemplateDao().update(template)
+            if (old != null) {
+                db.transactionDao().updateLabelsForTemplate(
+                    templateId = template.id,
+                    oldDescription = old.description,
+                    description = template.description,
+                    oldCategoryId = old.categoryId,
+                    categoryId = template.categoryId,
+                    oldAccountId = old.accountId,
+                    accountId = template.accountId,
+                    oldCounterpartyId = old.counterpartyId,
+                    counterpartyId = template.counterpartyId
+                )
+            }
+        }
 
     // Accounts
     fun getAllAccounts(): Flow<List<Account>> =

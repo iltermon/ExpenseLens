@@ -48,6 +48,7 @@ import com.iltermon.expenselens.ui.components.DeleteWithReassignDialog
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.util.accountWithType
 import com.iltermon.expenselens.ui.components.BackButton
+import com.iltermon.expenselens.ui.transactions.UnsavedChangesDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

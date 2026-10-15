@@ -1,54 +1,41 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository. This file is the **index**: keep it short. Detailed
+notes live in `docs/claude/`. Read only the topic file you need for the task at hand.
 
-## Commands
+## Maintaining these notes
 
-```bash
-# Build debug APK
-./gradlew assembleDebug
+- Update the relevant `docs/claude/*.md` file in the same change as any code that alters what it
+  describes (behavior, invariants, file locations). Add a new topic file instead of growing this
+  one, and list it in the index below.
+- Keep notes to facts not obvious from the code: invariants, design decisions and their reasons,
+  gotchas. Don't duplicate code or git history.
 
-# Run unit tests
-./gradlew test
+## Project at a glance
 
-# Run instrumented tests (requires connected device/emulator)
-./gradlew connectedAndroidTest
+ExpenseLens is a personal Android expense/income tracker built with Jetpack Compose, Room,
+Navigation Compose, a single ViewModel, and Coroutines/Flow (MVVM: Room → Repository →
+ViewModel StateFlow → Composables). It has two modules: `:app`, and `:sankey`, an app-agnostic
+Canvas Sankey library. UI strings are in English (`values/`) and Turkish (`values-tr/`).
 
-# Run a single test class
-./gradlew test --tests "com.iltermon.expenselens.ExampleUnitTest"
+Build with JAVA_HOME set to the JetBrains Runtime: `export JAVA_HOME=~/.local/share/JetBrains/Toolbox/apps/rider/jbr`,
+then `./gradlew assembleDebug test`. Details are in [build.md](docs/claude/build.md).
 
-# Lint
-./gradlew lint
+## Topic index
 
-# Clean build
-./gradlew clean assembleDebug
-```
+| File | Read when working on |
+|---|---|
+| [build.md](docs/claude/build.md) | Gradle commands, JDK setup, tests |
+| [data-layer.md](docs/claude/data-layer.md) | Room entities, DAOs, repository, migrations, settings storage |
+| [recurring.md](docs/claude/recurring.md) | Recurring templates, occurrences, auto-pay, dedup, paid/unpaid editing, series delete |
+| [ui.md](docs/claude/ui.md) | ViewModel, `ExpenseItem`, navigation, package layout, forms, UI conventions |
+| [analytics.md](docs/claude/analytics.md) | Analytics screen, summary totals, Sankey mapping and the `:sankey` module |
+| [workflow.md](docs/claude/workflow.md) | Issue tracking, branches, roadmap phases |
 
-## Architecture
+## Must-know invariants
 
-**Stack:** Jetpack Compose + Room + Navigation Compose + ViewModel + Kotlin Coroutines/Flow
-
-**Pattern:** MVVM. Data flows Room → Repository → ViewModel (StateFlow) → Composable UI.
-
-**Modules:** `:app` (the application) and `:sankey` — a standalone, app-agnostic Compose library that renders a hand-rolled Sankey diagram (Canvas, no third-party chart lib). `:sankey` has no Room/app/Material3 dependency; it takes two typed lists of nodes and derives the ribbons itself. Its pure geometry (`SankeyLayout.kt`) is JVM-unit-tested. The app maps `ExpenseItem`s into its inputs in `ui/SankeyMapper.kt`.
-
-### Data layer (`data/`)
-
-Two Room entities:
-- `Transaction` — a concrete payment record (`isPaid`, `isExpense`, `date` as ISO string `YYYY-MM-DD`)
-- `RecurringTemplate` — a repeating entry active between `startMonth`/`endMonth` (format `YYYY-MM`; `endMonth = null` means open-ended)
-
-`ExpenseLensRepository` is a thin wrapper over the two DAOs. `ExpenseLensDatabase` is the Room singleton.
-
-### UI layer (`ui/`)
-
-`ExpenseLensViewModel` is the single ViewModel for the whole app. It combines `filteredTransactions` and `activeRecurring` into `expenseItems: StateFlow<List<ExpenseItem>>`. `ExpenseItem` is the UI-facing model that unifies both sources — a recurring template that hasn't been paid yet appears as an `ExpenseItem` with `isRecurring = true` and `transactionId = null`. Marking it paid via `togglePaid()` converts it into a real `Transaction` in the database.
-
-`AppNavigation.kt` owns all routes (see it for the authoritative screen list — expenses, income, analytics, templates, per-transaction add/edit, and the settings-management screens for accounts/categories/counterparties). The `AnalyticsScreen` hosts the Sankey cash-flow chart built from `SankeyMapper` + the `:sankey` module.
-
-### Key invariants
-
-- Dates stored as `LocalDate.toString()` (`YYYY-MM-DD`); month keys as `YearMonth.toString()` (`YYYY-MM`).
-- Recurring deduplication in the ViewModel: a template is hidden for a period if a transaction with the same description already exists in that month (string prefix match on date).
-- `enableEdgeToEdge()` is active; bottom UI must use `navigationBarsPadding()` to avoid overlapping the system nav bar.
-- `minSdk = 26`, so `java.time` APIs are available without desugaring.
+- Dates are stored as `LocalDate.toString()` (`YYYY-MM-DD`); month keys use `YearMonth.toString()`.
+- A recurring occurrence is "recorded" when a transaction with the same `(templateId, date)`
+  exists; a unique DB index enforces this.
+- `enableEdgeToEdge()` is on, so bottom UI needs `navigationBarsPadding()`.
+- Shared composables go in `ui/components/`, never in a screen file.
