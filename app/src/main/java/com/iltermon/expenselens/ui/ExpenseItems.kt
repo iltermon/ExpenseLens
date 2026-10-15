@@ -24,7 +24,6 @@ data class ExpenseItem(
     val accountId: Int? = null,
     val counterpartyId: Int? = null
 )
-data class DateRange(val start: LocalDate, val end: LocalDate)
 
 internal fun List<Transaction>.inRange(range: DateRange): List<Transaction> = filter { transaction ->
     val date = LocalDate.parse(transaction.date)

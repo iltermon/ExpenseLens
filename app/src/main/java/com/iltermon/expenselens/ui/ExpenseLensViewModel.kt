@@ -58,21 +58,12 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.materializeAutoPayments(LocalDate.now()) }
     }
 
-    private val _selectedMonth = MutableStateFlow(YearMonth.now())
-    val selectedMonth: StateFlow<YearMonth> = _selectedMonth.asStateFlow()
-
-    private val _dateRange = MutableStateFlow(
-        DateRange(
-            start = YearMonth.now().atDay(1),
-            end = YearMonth.now().atEndOfMonth()
-        )
-    )
-    val dateRange: StateFlow<DateRange> = _dateRange.asStateFlow()
-
-    // True when the active range is not exactly the selected month, i.e. a custom filter is applied.
-    val isCustomRange: StateFlow<Boolean> = combine(_dateRange, _selectedMonth) { r, m ->
-        r.start != m.atDay(1) || r.end != m.atEndOfMonth()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), false)
+    /** Month / custom range shared with the Analytics tab (see [PeriodSelection]). */
+    val period = PeriodSelection()
+    val selectedMonth: StateFlow<YearMonth> = period.selectedMonth
+    val dateRange: StateFlow<DateRange> = period.dateRange
+    val isCustomRange: StateFlow<Boolean> = period.isCustomRange
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), false)
 
     // One shared collection of the transactions table. Range filtering happens inside the same
     // combine that merges in the templates, never in a separate upstream flow: otherwise a period
@@ -149,18 +140,17 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
 
-    val expenseItems: StateFlow<List<ExpenseItem>> = combine(
+    private val expenseItems: StateFlow<List<ExpenseItem>> = combine(
         allTransactions,
         allTemplates,
-        _dateRange
+        period.dateRange
     ) { transactions, templates, range ->
         mergeItems(transactions.inRange(range), templates, range)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
 
     // --- Per-tab filter & sort (independent Expenses vs Income), layered on top of the date range.
-    // Held here like _dateRange so state survives tab switches; the pure logic lives in
-    // ExpenseItemFiltering.kt. Applied AFTER mergeItems, so recurring projection/dedup and
-    // analyticsItems are untouched. ---
+    // Held here so state survives tab switches; the pure logic lives in TransactionItemFiltering.kt.
+    // Applied AFTER mergeItems, so recurring projection/dedup is untouched. ---
     private val _expensesFilter = MutableStateFlow(ListFilterState())
     val expensesFilter: StateFlow<ListFilterState> = _expensesFilter.asStateFlow()
     private val _expensesSort = MutableStateFlow(SortState())
@@ -210,7 +200,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     val analyticsYear: StateFlow<Year> = _analyticsYear.asStateFlow()
 
     private val analyticsDateRange: StateFlow<DateRange> = combine(
-        _analyticsPeriod, _dateRange, _analyticsYear
+        _analyticsPeriod, period.dateRange, _analyticsYear
     ) { mode, globalRange, year ->
         when (mode) {
             AnalyticsPeriod.MONTH -> globalRange
@@ -248,38 +238,22 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         }
     }
 
-    fun goToPreviousMonth() {
-        val newMonth = _selectedMonth.value.minusMonths(1)
-        _selectedMonth.value = newMonth
-        _dateRange.value = DateRange(newMonth.atDay(1), newMonth.atEndOfMonth())
-    }
+    fun goToPreviousMonth() = period.previousMonth()
 
-    fun goToNextMonth() {
-        val newMonth = _selectedMonth.value.plusMonths(1)
-        _selectedMonth.value = newMonth
-        _dateRange.value = DateRange(newMonth.atDay(1), newMonth.atEndOfMonth())
-    }
+    fun goToNextMonth() = period.nextMonth()
 
     /** Jump the (shared) month directly, e.g. from the Analytics period picker. */
-    fun setAnalyticsMonth(month: YearMonth) {
-        _selectedMonth.value = month
-        _dateRange.value = DateRange(month.atDay(1), month.atEndOfMonth())
-    }
+    fun setAnalyticsMonth(month: YearMonth) = period.setMonth(month)
 
     /** Jump the Analytics-only year directly. */
     fun setAnalyticsYear(year: Year) {
         _analyticsYear.value = year
     }
 
-    fun selectDateRange(start: LocalDate, end: LocalDate) {
-        _dateRange.value = DateRange(start, end)
-    }
+    fun selectDateRange(start: LocalDate, end: LocalDate) = period.selectRange(start, end)
 
     /** Drops a custom range, snapping the filter back to the full selected month. */
-    fun clearDateRange() {
-        val m = _selectedMonth.value
-        _dateRange.value = DateRange(m.atDay(1), m.atEndOfMonth())
-    }
+    fun clearDateRange() = period.clearRange()
 
     // --- Save paths used by the Add/Edit forms. The repository resolves the chosen counterparty and
     // writes the row in one transaction; template writes then record any auto-payments now due. ---
