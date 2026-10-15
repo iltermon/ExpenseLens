@@ -23,7 +23,7 @@ end date and blocks saving.
 The app is **day-accurate by design**. Per-month totals can differ slightly from the user's old
 spreadsheet, which was month-granular. That is expected, not a bug.
 
-## Projection and dedup (`ExpenseLensViewModel.mergeItems`)
+## Projection and dedup (`mergeItems` in `ui/ExpenseItems.kt`)
 
 The lists combine real transactions with *projected* occurrences of every template in the range.
 A projected occurrence is hidden when a transaction exists with the same `(templateId, date)`.
@@ -42,9 +42,11 @@ Changing a template's `startDate` or frequency can likewise orphan existing paym
 - **Auto-pay:** for `autoPayment` templates, `repository.materializeAutoPayments(today)` inserts
   every missing occurrence from `startDate` through today. It runs in one `withTransaction`. It
   reads templates and existing `(templateId, date)` keys fresh inside the transaction, so stale
-  Flow emissions can't double-insert or bring back a series that was just deleted. The ViewModel
-  `init` re-runs it whenever templates or transactions change (a future cleanup into an explicit
-  backfill is tracked in #30 C1).
+  Flow emissions can't double-insert or bring back a series that was just deleted. It is triggered
+  **explicitly**, never by observing the tables: `MainActivity.onResume` → `refreshAutoPayments()`
+  (covers app start and a date change while backgrounded), and right after every template write
+  (`saveTemplate`/`updateTemplate`/`insertTemplate`) and after an import. Any new code path that
+  creates or edits templates must call it too, or past occurrences only appear on the next resume.
 
 ## Editing and deleting (`ui/components/ExpenseItemRow.kt`)
 

@@ -11,7 +11,6 @@ import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.Transaction
-import com.iltermon.expenselens.data.occurrencesInRange
 import com.iltermon.expenselens.ui.dev.DataImporter
 import com.iltermon.expenselens.ui.dev.XlsxReader
 import com.iltermon.expenselens.ui.transactions.ListFilterState
@@ -28,24 +27,6 @@ import java.time.Year
 import java.time.YearMonth
 
 enum class AnalyticsPeriod { MONTH, YEAR }
-
-data class ExpenseItem(
-    val id: Int,
-    val description: String,
-    val amount: Double,
-    val categoryId: Int?,
-    val date: String,
-    val isExpense: Boolean,
-    val isPaid: Boolean,
-    val isRecurring: Boolean,
-    val transactionId: Int? = null,
-    val templateId: Int? = null,          // non-null only for recurring items
-    val frequencyInterval: Int? = null,   // non-null only for recurring items
-    val frequencyUnit: String? = null,    // non-null only for recurring items
-    val accountId: Int? = null,
-    val counterpartyId: Int? = null
-)
-data class DateRange(val start: LocalDate, val end: LocalDate)
 
 /**
  * How the transaction form resolved its counterparty field at save time: either an existing
@@ -74,18 +55,15 @@ sealed interface ImportStatus {
 
 class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : ViewModel() {
 
-    init {
-        // Auto-pay: whenever templates or transactions change, record a paid transaction for each
-        // due occurrence of every auto-payment template. The repository reads fresh state inside a
-        // single DB transaction, so stale emissions here (e.g. Room's backlog during a bulk import)
-        // can't cause double inserts or resurrect a just-deleted series.
-        viewModelScope.launch {
-            combine(
-                repository.getAllTemplates(),
-                repository.getAllTransactions()
-            ) { _, _ -> Unit }
-                .collect { repository.materializeAutoPayments(LocalDate.now()) }
-        }
+    /**
+     * Auto-pay: records a paid transaction for every due occurrence of every auto-payment template
+     * (see [ExpenseLensRepository.materializeAutoPayments]; idempotent, so extra runs are harmless).
+     * Triggered explicitly rather than by observing the tables: on every app resume (MainActivity,
+     * which also covers app start and a date change while backgrounded) and after any template write
+     * or import, since those are the only things that create new due occurrences.
+     */
+    fun refreshAutoPayments() {
+        viewModelScope.launch { repository.materializeAutoPayments(LocalDate.now()) }
     }
 
     private val _selectedMonth = MutableStateFlow(YearMonth.now())
@@ -110,11 +88,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     // occurrences are projected against the old period's payments ("recurring" rows flash up).
     private val allTransactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
-
-    private fun List<Transaction>.inRange(range: DateRange): List<Transaction> = filter { transaction ->
-        val date = LocalDate.parse(transaction.date)
-        date >= range.start && date <= range.end
-    }
 
     val accounts: StateFlow<List<Account>> = repository.getAllAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
@@ -182,59 +155,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 _busy.value = false
             }
         }
-    }
-
-    // Merges concrete transactions (already filtered to [range]) with the projected occurrences of
-    // every recurring template in [range], hiding occurrences that already exist as a transaction.
-    private fun mergeItems(
-        transactions: List<Transaction>,
-        templates: List<RecurringTransactionTemplate>,
-        range: DateRange
-    ): List<ExpenseItem> {
-        val transactionItems = transactions.map { t ->
-            ExpenseItem(
-                id = t.id,
-                description = t.description,
-                amount = t.amount,
-                categoryId = t.categoryId,
-                date = t.date,
-                isExpense = t.isExpense,
-                isPaid = t.isPaid,
-                isRecurring = false,
-                transactionId = t.id,
-                templateId = t.templateId,
-                accountId = t.accountId,
-                counterpartyId = t.counterpartyId
-            )
-        }
-
-        val recurringItems = templates.flatMap { template ->
-            template.occurrencesInRange(range.start, range.end)
-                // hide an occurrence that's already been recorded as a transaction
-                .filter { date ->
-                    transactions.none { t -> t.templateId == template.id && t.date == date.toString() }
-                }
-                .map { date ->
-                    ExpenseItem(
-                        id = template.id,
-                        description = template.description,
-                        amount = template.amount,
-                        categoryId = template.categoryId,
-                        date = date.toString(),
-                        isExpense = template.isExpense,
-                        isPaid = false,
-                        isRecurring = true,
-                        transactionId = null,
-                        templateId = template.id,
-                        frequencyInterval = template.frequencyInterval,
-                        frequencyUnit = template.frequencyUnit,
-                        accountId = template.accountId,
-                        counterpartyId = template.counterpartyId
-                    )
-                }
-        }
-
-        return (transactionItems + recurringItems).sortedBy { it.date }
     }
 
     val expenseItems: StateFlow<List<ExpenseItem>> = combine(
@@ -374,7 +294,10 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
 
     fun insertTemplate(template: RecurringTransactionTemplate) {
-        viewModelScope.launch { repository.insertTemplate(template) }
+        viewModelScope.launch {
+            repository.insertTemplate(template)
+            repository.materializeAutoPayments(LocalDate.now())
+        }
     }
 
     // --- Counterparty-aware save paths used by the Add/Edit forms. Each resolves the chosen
@@ -397,6 +320,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch {
             val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.insertTemplate(template.copy(counterpartyId = cpId))
+            repository.materializeAutoPayments(LocalDate.now())
         }
     }
 
@@ -404,6 +328,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch {
             val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
             repository.updateTemplate(template.copy(counterpartyId = cpId))
+            repository.materializeAutoPayments(LocalDate.now())
         }
     }
 
@@ -462,7 +387,10 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
 
     fun updateTemplate(template: RecurringTransactionTemplate) {
-        viewModelScope.launch { repository.updateTemplate(template) }
+        viewModelScope.launch {
+            repository.updateTemplate(template)
+            repository.materializeAutoPayments(LocalDate.now())
+        }
     }
 
     fun deleteTemplate(template: RecurringTransactionTemplate) {
@@ -522,6 +450,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
                 val r = withContext(Dispatchers.IO) {
                     val sheets = XlsxReader.read(context, uri)
                     DataImporter.import(repository, sheets)
+                        .also { repository.materializeAutoPayments(LocalDate.now()) }
                 }
                 _importStatus.value = ImportStatus.Imported(
                     expenses = r.expenses,

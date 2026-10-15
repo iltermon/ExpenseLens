@@ -38,5 +38,5 @@ new id); see #28 A2.
 ## Dev importer
 
 `ui/dev/DataImporter.kt` + `XlsxReader.kt` do a one-time import of the user's ExpenseLens.xlsx. They
-are reachable from Settings and not yet gated to debug builds (#29 B2). Imported transactions have
+are reachable from Settings and **intentionally kept in release builds** (#29 B2 is won't-do). Imported transactions have
 `templateId = null`. `*.xlsx` is gitignored because it holds the user's real financial data.

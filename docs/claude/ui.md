@@ -4,7 +4,7 @@
 
 | Package | Contents |
 |---|---|
-| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `ExpenseItem`, `CounterpartyChoice`, `ImportStatus`) |
+| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `CounterpartyChoice`, `ImportStatus`) and `ExpenseItems.kt` (`ExpenseItem`, `DateRange`, and the pure `mergeItems`/`inRange` logic) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
 | `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
@@ -21,6 +21,9 @@ touch them. `UnsavedChangesDialog` lives in `transactions/UnsavedChanges.kt` but
 screens use it too.
 
 ## ViewModel data flow
+
+- The ViewModel is created in `MainActivity` (`by viewModels`) so `onResume` can reach it; screens
+  get the same instance passed down through `AppNavigation`.
 
 - `expenseItems` = one `combine(allTransactions, allTemplates, _dateRange)` that filters to the
   range and calls `mergeItems`. Range filtering must stay **inside** that combine: a separately
