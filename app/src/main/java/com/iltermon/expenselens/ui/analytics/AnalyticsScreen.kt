@@ -49,9 +49,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
-import com.iltermon.expenselens.ui.AnalyticsPeriod
 import com.iltermon.expenselens.ui.ExpenseItem
-import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.util.LocalCurrencySymbol
 import com.iltermon.expenselens.ui.components.PeriodStepperRow
 import com.iltermon.expenselens.ui.util.SankeyOutputMode
@@ -71,68 +69,20 @@ import kotlin.math.abs
 /** Height of the compact Month/Year toggle in the app bar's action slot. */
 private val SEGMENTED_HEIGHT = 32.dp
 
-/**
- * Net spending for a set of items: expenses add; income subtracts **only** when it's a refund —
- * i.e. recorded into an expense/"both" category. Income posted to an income-only category (salary,
- * etc.) is real income, not a return, so it's ignored and never reduces spending.
- */
-private fun netOf(items: List<ExpenseItem>, incomeOnlyCategoryIds: Set<Int>): Double =
-    items.sumOf {
-        when {
-            it.isExpense -> it.amount
-            it.categoryId in incomeOnlyCategoryIds -> 0.0
-            else -> -it.amount
-        }
-    }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
-    val items by viewModel.analyticsItems.collectAsState()
-    val period by viewModel.analyticsPeriod.collectAsState()
+fun AnalyticsScreen(viewModel: AnalyticsViewModel) {
+    val items by viewModel.items.collectAsState()
+    val period by viewModel.mode.collectAsState()
     val month by viewModel.selectedMonth.collectAsState()
-    val year by viewModel.analyticsYear.collectAsState()
-    val categories by viewModel.allCategories.collectAsState()
-    val accounts by viewModel.accounts.collectAsState()
-    val counterparties by viewModel.counterparties.collectAsState()
-    val categoryNames by viewModel.categoryNamesById.collectAsState()
-
-    val totalExpenses = items.filter { it.isExpense }.sumOf { it.amount }
-    val totalIncome = items.filter { !it.isExpense }.sumOf { it.amount }
-    val recurringExpenses = items.filter { it.isExpense && it.templateId != null }.sumOf { it.amount }
-    val recurringIncome = items.filter { !it.isExpense && it.templateId != null }.sumOf { it.amount }
-    // Net balance from the user's perspective: positive when income outpaces expenses.
-    val net = totalIncome - totalExpenses
+    val year by viewModel.year.collectAsState()
+    val summary by viewModel.summary.collectAsState()
+    val breakdown by viewModel.breakdown.collectAsState()
+    val categoryNames by viewModel.categoryNames.collectAsState()
+    val accountNames by viewModel.accountNames.collectAsState()
+    val counterpartyNames by viewModel.counterpartyNames.collectAsState()
 
     val isMonth = period == AnalyticsPeriod.MONTH
-
-    // Income-only categories are real income (salary, etc.), not returns — they must not reduce spend.
-    val incomeOnlyCategoryIds = categories.filter { it.type == "income" }.map { it.id }.toSet()
-
-    // Net spending per category for the active period; keep any category that was spent on OR has
-    // a limit set. Sorted by spend descending (mirrors the spreadsheet's Monthly Summary).
-    val categoryRows = categories.mapNotNull { cat ->
-        val limit = if (isMonth) cat.limitMonthly else cat.limitYearly
-        val net = netOf(items.filter { it.categoryId == cat.id }, incomeOnlyCategoryIds)
-        if (net > 0 || limit != null) SpendRow(cat.name, net, null, limit) else null
-    }.sortedByDescending { it.net }
-
-    // Net spending per account, plus the recurring portion (mirrors the by-account table).
-    val accountRows = accounts.mapNotNull { acc ->
-        val limit = if (isMonth) acc.limitMonthly else acc.limitYearly
-        val accItems = items.filter { it.accountId == acc.id }
-        val net = netOf(accItems, incomeOnlyCategoryIds)
-        val recurring = netOf(accItems.filter { it.templateId != null }, incomeOnlyCategoryIds)
-        if (net != 0.0 || recurring != 0.0 || limit != null) {
-            SpendRow(acc.name, net, recurring, limit)
-        } else null
-    }.sortedByDescending { it.net }
-
-    // Net spending per counterparty (store/vendor). Counterparties carry no limit or recurring.
-    val counterpartyRows = counterparties.mapNotNull { cp ->
-        val net = netOf(items.filter { it.counterpartyId == cp.id }, incomeOnlyCategoryIds)
-        if (net > 0) SpendRow(cp.name, net, null, null) else null
-    }.sortedByDescending { it.net }
 
     Scaffold(
         topBar = {
@@ -141,7 +91,7 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
                 actions = {
                     PeriodModeToggle(
                         isMonth = isMonth,
-                        onModeChange = { viewModel.setAnalyticsPeriod(it) },
+                        onModeChange = { viewModel.setMode(it) },
                         modifier = Modifier.padding(end = 12.dp)
                     )
                 }
@@ -150,12 +100,12 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
         bottomBar = {
             SummaryBar(
                 leftLabel = stringResource(R.string.analytics_total_expenses),
-                leftAmount = totalExpenses,
+                leftAmount = summary.totalExpenses,
                 rightLabel = stringResource(R.string.analytics_total_income),
-                rightAmount = totalIncome,
+                rightAmount = summary.totalIncome,
                 rightIsNegative = false,
-                leftRecurring = recurringExpenses,
-                rightRecurring = recurringIncome
+                leftRecurring = summary.recurringExpenses,
+                rightRecurring = summary.recurringIncome
             )
         }
     ) { padding ->
@@ -165,10 +115,10 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
                 isMonth = isMonth,
                 month = month,
                 year = year,
-                onPrevious = { viewModel.analyticsPrevious() },
-                onNext = { viewModel.analyticsNext() },
-                onPickMonth = { viewModel.setAnalyticsMonth(it) },
-                onPickYear = { viewModel.setAnalyticsYear(it) },
+                onPrevious = { viewModel.previous() },
+                onNext = { viewModel.next() },
+                onPickMonth = { viewModel.setMonth(it) },
+                onPickYear = { viewModel.setYear(it) },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
@@ -180,21 +130,21 @@ fun AnalyticsScreen(viewModel: ExpenseLensViewModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SummaryCards(
-                    net = net,
-                    totalExpenses = totalExpenses,
-                    recurringExpenses = recurringExpenses,
-                    totalIncome = totalIncome,
-                    recurringIncome = recurringIncome
+                    net = summary.net,
+                    totalExpenses = summary.totalExpenses,
+                    recurringExpenses = summary.recurringExpenses,
+                    totalIncome = summary.totalIncome,
+                    recurringIncome = summary.recurringIncome
                 )
 
                 SpendingFlowCard(
                     items = items,
                     categoryNames = categoryNames,
-                    accountNames = accounts.associate { it.id to it.name },
-                    counterpartyNames = counterparties.associate { it.id to it.name },
-                    categoryRows = categoryRows,
-                    accountRows = accountRows,
-                    counterpartyRows = counterpartyRows,
+                    accountNames = accountNames,
+                    counterpartyNames = counterpartyNames,
+                    categoryRows = breakdown.categoryRows,
+                    accountRows = breakdown.accountRows,
+                    counterpartyRows = breakdown.counterpartyRows,
                 )
             }
         }
@@ -424,16 +374,6 @@ private fun AmountRow(label: String, amount: Double, recurring: Double) {
         }
     }
 }
-
-/** One row of a spending breakdown: net spend, optional recurring portion, optional budget limit. */
-private data class SpendRow(
-    val name: String,
-    val net: Double,
-    val recurring: Double?,
-    val limit: Double?
-)
-
-
 
 @Composable
 private fun SpendRowItem(row: SpendRow, showRecurring: Boolean) {

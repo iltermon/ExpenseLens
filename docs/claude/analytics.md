@@ -1,6 +1,13 @@
 # Analytics & Sankey
 
-## Summary totals (`ui/analytics/AnalyticsScreen.kt`)
+## Where it lives
+
+`AnalyticsViewModel` builds the period's items and derives `summary` and `breakdown` once per data
+change; the math is pure in `AnalyticsCalculations.kt` (`summarize`, `buildBreakdown`, `netOf`,
+tested in `AnalyticsCalculationsTest`). `AnalyticsScreen` only renders. Month mode follows the
+shared `PeriodSelection` (see [ui.md](ui.md)).
+
+## Summary totals
 
 - **Income** = sum of every non-expense item. **Expenses** = sum of every expense item.
   This is the single definition of "income" used by the summary card *and* the Sankey graph.

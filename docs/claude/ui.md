@@ -4,19 +4,19 @@
 
 | Package | Contents |
 |---|---|
-| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `ImportStatus`), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
+| `ui/` | `ExpenseLensViewModel` (lists, tabs, CRUD, import; also defines `ImportStatus`), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
 | `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
 | `ui/settings/` | Settings plus accounts/categories/counterparties management |
-| `ui/analytics/` | `AnalyticsScreen` (see [analytics.md](analytics.md)) |
+| `ui/analytics/` | `AnalyticsScreen`, `AnalyticsViewModel`, pure `AnalyticsCalculations.kt` (see [analytics.md](analytics.md)) |
 | `ui/components/` | Shared composables (`ExpenseItemRow`, `SwipeToRevealRow`, `TabScreenShell`/`SummaryBar`, `FilterBottomSheet`, ...) |
 | `ui/util/` | Currency formatting, `LocaleManager`, `LocalizedLabels`, `SankeyMapper` |
 | `ui/dev/` | Excel importer (dev only) |
 
 **File organisation: one concept per file** (Kotlin convention, not one class per file):
 1. A file is named after its main type; everything else in it exists only to serve that type
-   (e.g. `ExpenseItems.kt` holds `ExpenseItem` and the logic that builds it).
+   (e.g. result types live in `AnalyticsCalculations.kt`).
 2. A type used **across several features** gets its own file (e.g. `DateRange.kt`,
    `data/CounterpartyChoice.kt`), so it can be found without knowing where it was first written.
 3. Split a file when it passes ~300–400 lines or starts covering a second topic.
@@ -27,10 +27,18 @@ and `SectionHeader` and `ExpenseItemCard` are in `ExpensesScreen.kt` (#29 B1). M
 touch them. `UnsavedChangesDialog` lives in `transactions/UnsavedChanges.kt` but the settings
 screens use it too.
 
-## ViewModel data flow
+## ViewModels
 
-- The ViewModel is created in `MainActivity` (`by viewModels`) so `onResume` can reach it; screens
-  get the same instance passed down through `AppNavigation`.
+Both ViewModels are created in `MainActivity` (`by viewModels`) and passed down through
+`AppNavigation`; they share one lifetime (the activity's ViewModelStore):
+
+- `ExpenseLensViewModel`: entity lists, the shared `period`, Expenses/Income tab items with filter
+  and sort, save/delete pass-throughs, `togglePaid`, Excel import, `refreshAutoPayments` (called
+  from `onResume`).
+- `AnalyticsViewModel(repository, period)`: gets the **same** `PeriodSelection` instance, so month
+  changes stay in sync with the Expenses/Income tabs. Year mode is its own state.
+
+## Data flow
 
 - `expenseItems` = one `combine(allTransactions, allTemplates, period.dateRange)` that filters to the
   range and calls `mergeItems`. Range filtering must stay **inside** that combine: a separately
@@ -38,9 +46,8 @@ screens use it too.
   projected against the old period's payments, and recurring rows flash for a frame.
 - `expensesTabItems` / `incomeTabItems` apply per-tab filter and sort state
   (`TransactionItemFiltering.kt`) **after** the merge.
-- `period` (`PeriodSelection`) holds the month and optional custom range shared by Expenses,
-  Income and Analytics month mode. Analytics' `analyticsDateRange` uses it in MONTH mode; YEAR mode
-  is Analytics-only.
+- `AnalyticsViewModel` derives its own range: MONTH mode uses the shared `PeriodSelection` range;
+  YEAR mode is Analytics-only.
 - `ExpenseItem` is the UI model that unifies transactions and projected occurrences
   (see [recurring.md](recurring.md)).
 
