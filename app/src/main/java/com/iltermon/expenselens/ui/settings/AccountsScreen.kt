@@ -50,7 +50,7 @@ import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.util.LocalCurrencySymbol
 import com.iltermon.expenselens.ui.util.accountTypeLabel
 import com.iltermon.expenselens.ui.util.accountWithType
-import com.iltermon.expenselens.ui.transactions.UnsavedChangesDialog
+import com.iltermon.expenselens.ui.components.UnsavedChangesDialog
 
 private val accountTypes = listOf("Debit", "Credit Card", "Investment", "Cash", "Savings")
 

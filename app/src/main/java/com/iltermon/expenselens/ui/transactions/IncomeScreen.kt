@@ -26,6 +26,7 @@ import com.iltermon.expenselens.ui.components.TabScreenShell
 import com.iltermon.expenselens.ui.components.ExpenseItemRow
 import com.iltermon.expenselens.ui.components.FilterBottomSheet
 import com.iltermon.expenselens.ui.components.NoFilterResults
+import com.iltermon.expenselens.ui.components.SectionHeader
 
 @Composable
 fun IncomeScreen(
