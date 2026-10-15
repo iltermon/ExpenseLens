@@ -22,10 +22,8 @@
 3. Split a file when it passes ~300–400 lines or starts covering a second topic.
 
 **Convention:** shared or generic composables belong in `ui/components/`, never in a
-screen-specific file. Some are still in the wrong place: `DatePickerField` is in `RecurringForm.kt`,
-and `SectionHeader` and `ExpenseItemCard` are in `ExpensesScreen.kt` (#29 B1). Move them when you
-touch them. `UnsavedChangesDialog` lives in `transactions/UnsavedChanges.kt` but the settings
-screens use it too.
+screen-specific file (each in its own file, e.g. `ExpenseItemCard.kt`, `SectionHeader.kt`,
+`DatePickerField.kt`, `UnsavedChangesDialog.kt`).
 
 ## ViewModels
 
