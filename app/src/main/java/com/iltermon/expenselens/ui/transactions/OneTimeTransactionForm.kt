@@ -28,7 +28,7 @@ import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.Transaction
-import com.iltermon.expenselens.ui.CounterpartyChoice
+import com.iltermon.expenselens.data.CounterpartyChoice
 import java.time.LocalDate
 
 @Composable

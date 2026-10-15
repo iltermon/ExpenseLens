@@ -61,6 +61,53 @@ class ExpenseLensRepository(private val db: ExpenseLensDatabase) {
     suspend fun updateTransaction(transaction: Transaction) =
         db.transactionDao().update(transaction)
 
+    // --- Counterparty-aware save paths used by the Add/Edit forms. Each resolves the chosen
+    // counterparty (creating it or re-curating its defaults) and writes the row in one DB
+    // transaction, so a concurrent rename/delete of the counterparty can't slip in between. ---
+
+    suspend fun saveTransaction(transaction: Transaction, choice: CounterpartyChoice) = db.withTransaction {
+        val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
+        db.transactionDao().insert(transaction.copy(counterpartyId = cpId))
+    }
+
+    suspend fun updateTransaction(transaction: Transaction, choice: CounterpartyChoice) = db.withTransaction {
+        val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
+        db.transactionDao().update(transaction.copy(counterpartyId = cpId))
+    }
+
+    suspend fun saveTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) = db.withTransaction {
+        val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
+        db.recurringTemplateDao().insert(template.copy(counterpartyId = cpId))
+    }
+
+    suspend fun updateTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) = db.withTransaction {
+        val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
+        updateTemplate(template.copy(counterpartyId = cpId))
+    }
+
+    /** Returns the id to store for [choice]; must run inside a transaction. */
+    private suspend fun resolveCounterparty(choice: CounterpartyChoice, categoryId: Int?, accountId: Int?): Int =
+        when (choice) {
+            is CounterpartyChoice.New -> {
+                val dao = db.counterpartyDao()
+                val created = dao.insert(
+                    Counterparty(name = choice.name, defaultCategoryId = categoryId, defaultAccountId = accountId)
+                )
+                // IGNORE-conflict returns -1 when the name already exists: use that row instead. We're
+                // inside the transaction, so it can't have been deleted since the insert attempt.
+                if (created > 0) created.toInt()
+                else checkNotNull(dao.getByName(choice.name)) { "Counterparty '${choice.name}' vanished" }.id
+            }
+            is CounterpartyChoice.Existing -> {
+                if (choice.updateDefaults) {
+                    db.counterpartyDao().update(
+                        choice.counterparty.copy(defaultCategoryId = categoryId, defaultAccountId = accountId)
+                    )
+                }
+                choice.counterparty.id
+            }
+        }
+
     // Recurring Templates
     fun getAllTemplates(): Flow<List<RecurringTransactionTemplate>> =
         db.recurringTemplateDao().getAllTemplates()

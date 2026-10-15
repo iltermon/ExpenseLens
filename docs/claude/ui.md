@@ -4,7 +4,7 @@
 
 | Package | Contents |
 |---|---|
-| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `CounterpartyChoice`, `ImportStatus`) and `ExpenseItems.kt` (`ExpenseItem`, `DateRange`, and the pure `mergeItems`/`inRange` logic) |
+| `ui/` | `ExpenseLensViewModel` (the single ViewModel; also defines `ImportStatus`) and `ExpenseItems.kt` (`ExpenseItem`, `DateRange`, and the pure `mergeItems`/`inRange` logic) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
 | `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
@@ -42,6 +42,8 @@ screens use it too.
   survive switching tabs.
 - Saves go through `CounterpartySaveController`. Typing a new counterparty name creates the
   counterparty; picking an existing one whose defaults differ prompts "update defaults?".
+- The resulting `CounterpartyChoice` (in `data/`) is resolved by the repository's
+  `saveTransaction(t, choice)` etc., in the same DB transaction as the row write.
 - `rememberFormBackGate` / `rememberUnsavedChangesBackGuard` handle the unsaved-changes prompt on back.
 - Category pickers: `active*Categories` for new transactions, unfiltered lists for edit screens.
 - **Trimming:** `coreFieldsValid` returns the trimmed `description` (and parses a trimmed amount);

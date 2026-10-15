@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
+import com.iltermon.expenselens.data.CounterpartyChoice
 import com.iltermon.expenselens.data.ExpenseLensRepository
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.Transaction
@@ -27,15 +28,6 @@ import java.time.Year
 import java.time.YearMonth
 
 enum class AnalyticsPeriod { MONTH, YEAR }
-
-/**
- * How the transaction form resolved its counterparty field at save time: either an existing
- * counterparty (optionally re-curating its defaults) or a brand-new name to create.
- */
-sealed interface CounterpartyChoice {
-    data class Existing(val counterparty: Counterparty, val updateDefaults: Boolean) : CounterpartyChoice
-    data class New(val name: String) : CounterpartyChoice
-}
 
 /** Outcome of an import/clear, kept structured so the UI can localize the message. */
 sealed interface ImportStatus {
@@ -289,68 +281,27 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         _dateRange.value = DateRange(m.atDay(1), m.atEndOfMonth())
     }
 
-    fun insertTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.insertTransaction(transaction) }
-    }
-
-    fun insertTemplate(template: RecurringTransactionTemplate) {
-        viewModelScope.launch {
-            repository.insertTemplate(template)
-            repository.materializeAutoPayments(LocalDate.now())
-        }
-    }
-
-    // --- Counterparty-aware save paths used by the Add/Edit forms. Each resolves the chosen
-    // counterparty (creating it or re-curating its defaults) before writing the row. ---
+    // --- Save paths used by the Add/Edit forms. The repository resolves the chosen counterparty and
+    // writes the row in one transaction; template writes then record any auto-payments now due. ---
     fun saveTransaction(transaction: Transaction, choice: CounterpartyChoice) {
-        viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
-            repository.insertTransaction(transaction.copy(counterpartyId = cpId))
-        }
+        viewModelScope.launch { repository.saveTransaction(transaction, choice) }
     }
 
     fun updateTransaction(transaction: Transaction, choice: CounterpartyChoice) {
-        viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, transaction.categoryId, transaction.accountId)
-            repository.updateTransaction(transaction.copy(counterpartyId = cpId))
-        }
+        viewModelScope.launch { repository.updateTransaction(transaction, choice) }
     }
 
     fun saveTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
-            repository.insertTemplate(template.copy(counterpartyId = cpId))
+            repository.saveTemplate(template, choice)
             repository.materializeAutoPayments(LocalDate.now())
         }
     }
 
     fun updateTemplate(template: RecurringTransactionTemplate, choice: CounterpartyChoice) {
         viewModelScope.launch {
-            val cpId = resolveCounterparty(choice, template.categoryId, template.accountId)
-            repository.updateTemplate(template.copy(counterpartyId = cpId))
+            repository.updateTemplate(template, choice)
             repository.materializeAutoPayments(LocalDate.now())
-        }
-    }
-
-    private suspend fun resolveCounterparty(
-        choice: CounterpartyChoice,
-        categoryId: Int?,
-        accountId: Int?
-    ): Int = when (choice) {
-        is CounterpartyChoice.New -> {
-            val id = repository.insertCounterparty(
-                Counterparty(name = choice.name, defaultCategoryId = categoryId, defaultAccountId = accountId)
-            )
-            // IGNORE-conflict returns -1 when the name already exists; fall back to the existing row.
-            if (id > 0) id.toInt() else repository.getCounterpartyByName(choice.name)!!.id
-        }
-        is CounterpartyChoice.Existing -> {
-            if (choice.updateDefaults) {
-                repository.updateCounterparty(
-                    choice.counterparty.copy(defaultCategoryId = categoryId, defaultAccountId = accountId)
-                )
-            }
-            choice.counterparty.id
         }
     }
 
@@ -374,23 +325,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.mergeCounterparties(source, target) }
     }
 
-    fun updateTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.updateTransaction(transaction) }
-    }
-
-    fun deleteTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.deleteTransaction(transaction) }
-    }
-
     fun deleteTransactionById(id: Int) {
         launchBusy { repository.deleteTransactionById(id) }
-    }
-
-    fun updateTemplate(template: RecurringTransactionTemplate) {
-        viewModelScope.launch {
-            repository.updateTemplate(template)
-            repository.materializeAutoPayments(LocalDate.now())
-        }
     }
 
     fun deleteTemplate(template: RecurringTransactionTemplate) {

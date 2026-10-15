@@ -23,7 +23,7 @@ import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
-import com.iltermon.expenselens.ui.CounterpartyChoice
+import com.iltermon.expenselens.data.CounterpartyChoice
 import com.iltermon.expenselens.ui.components.CounterpartyField
 import com.iltermon.expenselens.ui.components.CounterpartyResolution
 import com.iltermon.expenselens.ui.components.UpdateDefaultsDialog

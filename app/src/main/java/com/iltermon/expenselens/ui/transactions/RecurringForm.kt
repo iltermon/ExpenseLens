@@ -45,7 +45,7 @@ import com.iltermon.expenselens.data.Counterparty
 import com.iltermon.expenselens.data.RecurrenceRangeError
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.recurrenceRangeError
-import com.iltermon.expenselens.ui.CounterpartyChoice
+import com.iltermon.expenselens.data.CounterpartyChoice
 import com.iltermon.expenselens.ui.util.frequencyUnitLabel
 import java.time.Instant
 import java.time.LocalDate
