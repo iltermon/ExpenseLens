@@ -37,6 +37,11 @@ Three ViewModels, all created in `MainActivity` (`by viewModels`) and passed dow
 - `ImportViewModel`: Excel import and "clear transactions" for Settings. Its `busy` flag and the main
   one both drive the blocking overlay in `AppNavigation`.
 
+Every ViewModel StateFlow uses `stateInWhileSubscribed(viewModelScope, initial)` (`StateFlowSharing.kt`,
+one shared `SUBSCRIBE_TIMEOUT_MS`). Within a ViewModel, read each table **once** into a StateFlow and
+derive filtered lists and id→name maps from it (`allCategories.map { … }`), instead of calling
+`repository.getAll…()` again.
+
 Counterparty resolution for saves lives in the repository (`saveTransaction(t, choice)` etc.), not
 in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
 
