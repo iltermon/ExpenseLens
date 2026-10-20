@@ -25,11 +25,15 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddIncomeScreen(
+fun AddTransactionScreen(
     viewModel: ExpenseLensViewModel,
+    type: TransactionType,
     onNavigateBack: () -> Unit
 ) {
-    val incomeCategories by viewModel.activeIncomeCategories.collectAsState()
+    val categories by when (type) {
+        TransactionType.EXPENSE -> viewModel.activeExpenseCategories
+        TransactionType.INCOME -> viewModel.activeIncomeCategories
+    }.collectAsState()
     val accounts by viewModel.activeAccounts.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
 
@@ -44,7 +48,7 @@ fun AddIncomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.add_income_title)) },
+                title = { Text(stringResource(type.addTitle)) },
                 navigationIcon = { BackButton(onClick = onBack) }
             )
         }
@@ -63,9 +67,9 @@ fun AddIncomeScreen(
                 OneTimeTransactionForm(
                     initialDate = date,
                     onDateChange = { date = it },
-                    categories = incomeCategories,
+                    categories = categories,
                     accounts = accounts,
-                    isExpense = false,
+                    isExpense = type.isExpense,
                     shared = sharedFields,
                     counterparties = counterparties,
                     gate = gate,
@@ -79,9 +83,9 @@ fun AddIncomeScreen(
                 RecurringForm(
                     initialStartDate = date,
                     onStartDateChange = { date = it },
-                    categories = incomeCategories,
+                    categories = categories,
                     accounts = accounts,
-                    isExpense = false,
+                    isExpense = type.isExpense,
                     shared = sharedFields,
                     counterparties = counterparties,
                     gate = gate,
