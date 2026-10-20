@@ -13,7 +13,7 @@ shared `PeriodSelection` (see [ui.md](ui.md)).
   This is the single definition of "income" used by the summary card *and* the Sankey graph.
 - Category/account/counterparty breakdown rows use `netOf`, which subtracts refunds (income in an
   expense or "both" category) from spending. These rows can therefore show less than the matching
-  Sankey output node when refunds exist. This is a known, open product question.
+  Sankey output node when refunds exist. Which definition to use everywhere is open in #40.
 
 ## Sankey mapping (`ui/util/SankeyMapper.kt` → `buildSankeyData`)
 

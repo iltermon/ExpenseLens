@@ -1,23 +1,16 @@
 package com.iltermon.expenselens.ui.transactions
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.Account
 import com.iltermon.expenselens.data.Category
 import com.iltermon.expenselens.data.Counterparty
+import com.iltermon.expenselens.ui.components.UnsavedChangesDialog
 
 /**
  * Screen-scoped bridge that lets the screen-level back guard ask the currently visible form
@@ -99,25 +92,4 @@ fun rememberUnsavedChangesBackGuard(
         )
     }
     return onBack
-}
-
-@Composable
-internal fun UnsavedChangesDialog(
-    onSave: () -> Unit,
-    onDiscard: () -> Unit,
-    onCancel: () -> Unit
-) {
-    AlertDialog(
-        // Tapping outside or dialog-back is treated as Cancel so changes are never lost implicitly.
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.discard_changes_title)) },
-        text = { Text(stringResource(R.string.discard_changes_message)) },
-        confirmButton = { TextButton(onClick = onSave) { Text(stringResource(R.string.action_save)) } },
-        dismissButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onDiscard) { Text(stringResource(R.string.action_discard)) }
-                TextButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
-            }
-        }
-    )
 }

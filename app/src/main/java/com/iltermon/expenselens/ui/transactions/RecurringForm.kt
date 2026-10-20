@@ -1,8 +1,6 @@
 package com.iltermon.expenselens.ui.transactions
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,8 +12,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -25,8 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -47,9 +41,8 @@ import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.recurrenceRangeError
 import com.iltermon.expenselens.data.CounterpartyChoice
 import com.iltermon.expenselens.ui.util.frequencyUnitLabel
-import java.time.Instant
+import com.iltermon.expenselens.ui.components.DatePickerField
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 private val frequencyUnits = listOf("Day", "Week", "Month", "Year")
 
@@ -258,51 +251,3 @@ private data class RecurringLocalBaseline(
     val endDate: LocalDate,
     val autoPayment: Boolean
 )
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun DatePickerField(
-    label: String,
-    value: LocalDate,
-    onValueChange: (LocalDate) -> Unit,
-    enabled: Boolean = true,
-    errorText: String? = null
-) {
-    var showDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = value.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    )
-
-    Box {
-        OutlinedTextField(
-            value = value.toString(),
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label) },
-            enabled = enabled,
-            isError = errorText != null,
-            supportingText = errorText?.let { { Text(it) } },
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (enabled) Box(modifier = Modifier.matchParentSize().clickable { showDialog = true })
-    }
-
-    if (showDialog) {
-        DatePickerDialog(
-            onDismissRequest = { showDialog = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        onValueChange(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
-                    }
-                    showDialog = false
-                }) { Text(stringResource(R.string.action_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text(stringResource(R.string.action_cancel)) }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-}

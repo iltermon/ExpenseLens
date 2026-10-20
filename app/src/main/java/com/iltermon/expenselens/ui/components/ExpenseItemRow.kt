@@ -13,7 +13,6 @@ import com.iltermon.expenselens.R
 import com.iltermon.expenselens.data.RecurringTransactionTemplate
 import com.iltermon.expenselens.data.occurrencesInRange
 import com.iltermon.expenselens.ui.ExpenseItem
-import com.iltermon.expenselens.ui.transactions.ExpenseItemCard
 import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import java.time.LocalDate
 
