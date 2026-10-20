@@ -27,6 +27,6 @@ repo (as of 2026-10-15); Claude is the only agent. The notes still must stay cur
 tests + explicit auto-pay trigger (merged, #35), PR 2 ViewModel split as four stacked PRs
 (merged, #36–#39), PR 3 duplicate screens as stacked PRs: 3a move shared composables to
 `ui/components/` (`refactor/screens-1-move-components`), 3b one Add screen (`refactor/screens-2-add-transaction`), 3c list section totals
-in the ViewModel, 3d one list screen. 3b/3d use a `TransactionType` enum (EXPENSE/INCOME, carrying
+in the ViewModel (`refactor/screens-3-section-totals`), 3d one list screen. 3b/3d use a `TransactionType` enum (EXPENSE/INCOME, carrying
 the per-type labels) at the screen level instead of an `isExpense` Boolean; the data model keeps
 `isExpense`. PRs stay small and single-purpose; see the small-PR rule.
