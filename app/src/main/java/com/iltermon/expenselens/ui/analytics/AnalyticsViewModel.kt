@@ -9,13 +9,12 @@ import com.iltermon.expenselens.ui.ExpenseItem
 import com.iltermon.expenselens.ui.PeriodSelection
 import com.iltermon.expenselens.ui.inRange
 import com.iltermon.expenselens.ui.mergeItems
+import com.iltermon.expenselens.ui.stateInWhileSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import java.time.Year
 import java.time.YearMonth
 
@@ -54,31 +53,32 @@ class AnalyticsViewModel(
         range
     ) { transactions, templates, r ->
         mergeItems(transactions.inRange(r), templates, r)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+    }.stateInWhileSubscribed(viewModelScope, emptyList())
+
+    // One subscription per table, shared by the breakdown and the name lookups below.
+    private val categories = repository.getAllCategories().stateInWhileSubscribed(viewModelScope, emptyList())
+    private val accounts = repository.getAllAccounts().stateInWhileSubscribed(viewModelScope, emptyList())
+    private val counterparties = repository.getAllCounterparties().stateInWhileSubscribed(viewModelScope, emptyList())
 
     val summary: StateFlow<AnalyticsSummary> = items.map(::summarize)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), AnalyticsSummary())
+        .stateInWhileSubscribed(viewModelScope, AnalyticsSummary())
 
     val breakdown: StateFlow<AnalyticsBreakdown> = combine(
-        items,
-        repository.getAllCategories(),
-        repository.getAllAccounts(),
-        repository.getAllCounterparties(),
-        _mode
+        items, categories, accounts, counterparties, _mode
     ) { items, categories, accounts, counterparties, mode ->
         buildBreakdown(items, categories, accounts, counterparties, isMonth = mode == AnalyticsPeriod.MONTH)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), AnalyticsBreakdown())
+    }.stateInWhileSubscribed(viewModelScope, AnalyticsBreakdown())
 
     // id -> name lookups for the Sankey graph's node labels.
-    val categoryNames: StateFlow<Map<Int, String>> = repository.getAllCategories()
+    val categoryNames: StateFlow<Map<Int, String>> = categories
         .map { list -> list.associate { it.id to it.name } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyMap())
-    val accountNames: StateFlow<Map<Int, String>> = repository.getAllAccounts()
+        .stateInWhileSubscribed(viewModelScope, emptyMap())
+    val accountNames: StateFlow<Map<Int, String>> = accounts
         .map { list -> list.associate { it.id to it.name } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyMap())
-    val counterpartyNames: StateFlow<Map<Int, String>> = repository.getAllCounterparties()
+        .stateInWhileSubscribed(viewModelScope, emptyMap())
+    val counterpartyNames: StateFlow<Map<Int, String>> = counterparties
         .map { list -> list.associate { it.id to it.name } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyMap())
+        .stateInWhileSubscribed(viewModelScope, emptyMap())
 
     fun setMode(mode: AnalyticsPeriod) {
         _mode.value = mode
@@ -106,8 +106,6 @@ class AnalyticsViewModel(
     }
 
     companion object {
-        private const val SUBSCRIBE_TIMEOUT_MS = 5000L
-
         fun factory(repository: ExpenseLensRepository, period: PeriodSelection): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
