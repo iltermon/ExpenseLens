@@ -34,7 +34,8 @@ fun ExpensesScreen(
     onEditTransaction: (Int) -> Unit,
     onEditTemplate: (Int) -> Unit
 ) {
-    val items by viewModel.expensesTabItems.collectAsState()
+    val sections by viewModel.expensesSections.collectAsState()
+    val items = sections.all
     val filter by viewModel.expensesFilter.collectAsState()
     val sort by viewModel.expensesSort.collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
@@ -46,21 +47,21 @@ fun ExpensesScreen(
     var searchActive by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
 
-    val recurringItems = items.filter { it.isRecurring && !it.isPaid }
-    val unpaidItems = items.filter { !it.isRecurring && !it.isPaid }
-    val paidItems = items.filter { it.isPaid }
+    val recurringItems = sections.recurring
+    val unpaidItems = sections.unpaid
+    val paidItems = sections.paid
 
     TabScreenShell(
         title = stringResource(R.string.nav_expenses),
         viewModel = viewModel,
         onAdd = onAddTransaction,
         leftLabel = stringResource(R.string.expenses_this_month),
-        leftAmount = items.sumOf { it.amount },
+        leftAmount = sections.total,
         rightLabel = stringResource(R.string.expenses_remaining_payment),
-        rightAmount = (recurringItems + unpaidItems).sumOf { it.amount },
+        rightAmount = sections.outstandingTotal,
         rightIsNegative = true,
-        leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
-        rightRecurring = recurringItems.sumOf { it.amount },
+        leftRecurring = sections.fromTemplatesTotal,
+        rightRecurring = sections.recurringTotal,
         onSearchOpen = { viewModel.clearExpensesFilter(); searchActive = true },
         searchActive = searchActive,
         searchQuery = filter.searchQuery,
@@ -112,7 +113,7 @@ fun ExpensesScreen(
                         item {
                             SectionHeader(
                                 title = stringResource(R.string.section_recurring),
-                                total = recurringItems.sumOf { it.amount })
+                                total = sections.recurringTotal)
                         }
                         items(recurringItems) { item ->
                             ExpenseItemRow(
@@ -131,7 +132,7 @@ fun ExpensesScreen(
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
                                 title = stringResource(R.string.section_to_be_paid),
-                                total = unpaidItems.sumOf { it.amount })
+                                total = sections.unpaidTotal)
                         }
                         items(unpaidItems) { item ->
                             ExpenseItemRow(
@@ -150,7 +151,7 @@ fun ExpensesScreen(
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
                                 title = stringResource(R.string.section_paid),
-                                total = paidItems.sumOf { it.amount })
+                                total = sections.paidTotal)
                         }
                         items(paidItems) { item ->
                             ExpenseItemRow(

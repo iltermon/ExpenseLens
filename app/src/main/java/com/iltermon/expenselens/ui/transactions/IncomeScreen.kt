@@ -35,7 +35,8 @@ fun IncomeScreen(
     onEditTransaction: (Int) -> Unit,
     onEditTemplate: (Int) -> Unit
 ) {
-    val items by viewModel.incomeTabItems.collectAsState()
+    val sections by viewModel.incomeSections.collectAsState()
+    val items = sections.all
     val filter by viewModel.incomeFilter.collectAsState()
     val sort by viewModel.incomeSort.collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
@@ -47,21 +48,21 @@ fun IncomeScreen(
     var searchActive by remember { mutableStateOf(false) }
     var showSheet by remember { mutableStateOf(false) }
 
-    val recurringItems = items.filter { it.isRecurring && !it.isPaid }
-    val pendingItems = items.filter { !it.isRecurring && !it.isPaid }
-    val receivedItems = items.filter { it.isPaid }
+    val recurringItems = sections.recurring
+    val pendingItems = sections.unpaid
+    val receivedItems = sections.paid
 
     TabScreenShell(
         title = stringResource(R.string.nav_income),
         viewModel = viewModel,
         onAdd = onAddIncome,
         leftLabel = stringResource(R.string.income_this_month),
-        leftAmount = items.sumOf { it.amount },
+        leftAmount = sections.total,
         rightLabel = stringResource(R.string.income_pending),
-        rightAmount = (recurringItems + pendingItems).sumOf { it.amount },
+        rightAmount = sections.outstandingTotal,
         rightIsNegative = false,
-        leftRecurring = items.filter { it.templateId != null }.sumOf { it.amount },
-        rightRecurring = recurringItems.sumOf { it.amount },
+        leftRecurring = sections.fromTemplatesTotal,
+        rightRecurring = sections.recurringTotal,
         onSearchOpen = { viewModel.clearIncomeFilter(); searchActive = true },
         searchActive = searchActive,
         searchQuery = filter.searchQuery,
@@ -111,7 +112,7 @@ fun IncomeScreen(
                         item {
                             SectionHeader(
                                 title = stringResource(R.string.section_recurring),
-                                total = recurringItems.sumOf { it.amount })
+                                total = sections.recurringTotal)
                         }
                         items(recurringItems) { item ->
                             ExpenseItemRow(
@@ -130,7 +131,7 @@ fun IncomeScreen(
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
                                 title = stringResource(R.string.section_pending),
-                                total = pendingItems.sumOf { it.amount })
+                                total = sections.unpaidTotal)
                         }
                         items(pendingItems) { item ->
                             ExpenseItemRow(
@@ -149,7 +150,7 @@ fun IncomeScreen(
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
                                 title = stringResource(R.string.section_received),
-                                total = receivedItems.sumOf { it.amount })
+                                total = sections.paidTotal)
                         }
                         items(receivedItems) { item ->
                             ExpenseItemRow(

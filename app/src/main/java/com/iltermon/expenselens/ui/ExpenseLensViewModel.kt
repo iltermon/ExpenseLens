@@ -13,6 +13,8 @@ import com.iltermon.expenselens.data.Transaction
 import com.iltermon.expenselens.ui.transactions.ListFilterState
 import com.iltermon.expenselens.ui.transactions.SortKey
 import com.iltermon.expenselens.ui.transactions.SortState
+import com.iltermon.expenselens.ui.transactions.TabSections
+import com.iltermon.expenselens.ui.transactions.sectionsOf
 import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -149,8 +151,14 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         applyFilterAndSort(items.filter { it.isExpense == isExpense }, f, s, cpNames, catNames)
     }.stateInWhileSubscribed(viewModelScope, emptyList())
 
-    val expensesTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(true, _expensesFilter, _expensesSort)
-    val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
+    private val expensesTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(true, _expensesFilter, _expensesSort)
+    private val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
+
+    // Each tab's sections and totals, computed once per change (see TabSections.kt).
+    val expensesSections: StateFlow<TabSections> = expensesTabItems.map(::sectionsOf)
+        .stateInWhileSubscribed(viewModelScope, TabSections())
+    val incomeSections: StateFlow<TabSections> = incomeTabItems.map(::sectionsOf)
+        .stateInWhileSubscribed(viewModelScope, TabSections())
 
     fun updateExpensesFilter(transform: (ListFilterState) -> ListFilterState) { _expensesFilter.update(transform) }
     fun clearExpensesFilter() { _expensesFilter.value = ListFilterState()
