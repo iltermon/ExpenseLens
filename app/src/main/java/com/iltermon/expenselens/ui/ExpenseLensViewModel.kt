@@ -219,23 +219,8 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         viewModelScope.launch { repository.mergeCounterparties(source, target) }
     }
 
-    fun updateTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.updateTransaction(transaction) }
-    }
-
-    fun deleteTransaction(transaction: Transaction) {
-        viewModelScope.launch { repository.deleteTransaction(transaction) }
-    }
-
     fun deleteTransactionById(id: Int) {
         launchBusy { repository.deleteTransactionById(id) }
-    }
-
-    fun updateTemplate(template: RecurringTransactionTemplate) {
-        viewModelScope.launch {
-            repository.updateTemplate(template)
-            repository.materializeAutoPayments(LocalDate.now())
-        }
     }
 
     fun deleteTemplate(template: RecurringTransactionTemplate) {
