@@ -51,8 +51,8 @@ import com.iltermon.expenselens.ui.settings.CounterpartiesScreen
 import com.iltermon.expenselens.ui.settings.SettingsScreen
 import com.iltermon.expenselens.ui.templates.EditRecurringTransactionTemplateScreen
 import com.iltermon.expenselens.ui.templates.TemplatesScreen
-import com.iltermon.expenselens.ui.transactions.AddExpenseScreen
-import com.iltermon.expenselens.ui.transactions.AddIncomeScreen
+import com.iltermon.expenselens.ui.transactions.AddTransactionScreen
+import com.iltermon.expenselens.ui.transactions.TransactionType
 import com.iltermon.expenselens.ui.transactions.EditTransactionScreen
 import com.iltermon.expenselens.ui.transactions.ExpensesScreen
 import com.iltermon.expenselens.ui.transactions.IncomeScreen
@@ -180,13 +180,15 @@ fun AppNavigation(
                 )
             }
             composable(Routes.ADD_EXPENSE) {
-                AddExpenseScreen(
+                AddTransactionScreen(
                     viewModel = viewModel,
+                    type = TransactionType.EXPENSE,
                     onNavigateBack = { navController.popBackStack() })
             }
             composable(Routes.ADD_INCOME) {
-                AddIncomeScreen(
+                AddTransactionScreen(
                     viewModel = viewModel,
+                    type = TransactionType.INCOME,
                     onNavigateBack = { navController.popBackStack() })
             }
             composable(

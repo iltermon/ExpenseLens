@@ -69,8 +69,15 @@ in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
 - **Trimming:** `coreFieldsValid` returns the trimmed `description` (and parses a trimmed amount);
   forms must save `validation.description`, not `shared.description`. Settings dialogs trim names,
   and `counterpartyChoiceFor` trims the counterparty name.
-- The Add screens hoist one `date` shared by both tabs: the one-time date becomes the recurring
+- `AddTransactionScreen(type)` (one screen for expense and income) hoists one `date` shared by both tabs: the one-time date becomes the recurring
   start date and vice versa (`onDateChange` / `onStartDateChange`).
+
+## Expense vs income screens
+
+Screens shared by both kinds take a `TransactionType` (`EXPENSE` / `INCOME`, in
+`transactions/TransactionType.kt`) rather than an `isExpense` Boolean. The enum carries every
+per-type difference (e.g. `addTitle`); add a property there instead of branching in the screen.
+It is screen-level only: entities and the forms keep `isExpense` (`type.isExpense`).
 
 ## Display conventions
 
