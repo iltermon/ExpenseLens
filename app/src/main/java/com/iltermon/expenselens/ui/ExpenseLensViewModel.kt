@@ -14,7 +14,6 @@ import com.iltermon.expenselens.ui.transactions.ListFilterState
 import com.iltermon.expenselens.ui.transactions.SortKey
 import com.iltermon.expenselens.ui.transactions.SortState
 import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -38,63 +37,66 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     val selectedMonth: StateFlow<YearMonth> = period.selectedMonth
     val dateRange: StateFlow<DateRange> = period.dateRange
     val isCustomRange: StateFlow<Boolean> = period.isCustomRange
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), false)
+        .stateInWhileSubscribed(viewModelScope, false)
 
     // One shared collection of the transactions table. Range filtering happens inside the same
     // combine that merges in the templates, never in a separate upstream flow: otherwise a period
     // change reaches the merge before the re-filtered list does, and for a frame the new period's
     // occurrences are projected against the old period's payments ("recurring" rows flash up).
     private val allTransactions: StateFlow<List<Transaction>> = repository.getAllTransactions()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
     val accounts: StateFlow<List<Account>> = repository.getAllAccounts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
     val allCategories: StateFlow<List<Category>> = repository.getAllCategories()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
     // id -> name lookup so lists/analytics can render a categoryId. Categories are referenced by id
     // now, so display must resolve the name (mirrors the counterparty id->name map used in the UI).
-    val categoryNamesById: StateFlow<Map<Int, String>> = repository.getAllCategories()
+    val categoryNamesById: StateFlow<Map<Int, String>> = allCategories
         .map { list -> list.associate { it.id to it.name } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyMap())
+        .stateInWhileSubscribed(viewModelScope, emptyMap())
 
-    val expenseCategories: StateFlow<List<Category>> = repository.getAllCategories()
+    val expenseCategories: StateFlow<List<Category>> = allCategories
         .map { list -> list.filter { it.type == null || it.type == "expense" } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
-    val incomeCategories: StateFlow<List<Category>> = repository.getAllCategories()
+    val incomeCategories: StateFlow<List<Category>> = allCategories
         .map { list -> list.filter { it.type == null || it.type == "income" } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
     // Active-only variants for the NEW-transaction pickers. Edit screens, Analytics and Settings keep
     // the unfiltered flows above so disabled accounts/categories stay visible on existing data.
-    val activeAccounts: StateFlow<List<Account>> = repository.getAllAccounts()
+    val activeAccounts: StateFlow<List<Account>> = accounts
         .map { list -> list.filter { it.active } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
-    val activeExpenseCategories: StateFlow<List<Category>> = repository.getAllCategories()
+    val activeExpenseCategories: StateFlow<List<Category>> = allCategories
         .map { list -> list.filter { it.active && (it.type == null || it.type == "expense") } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
-    val activeIncomeCategories: StateFlow<List<Category>> = repository.getAllCategories()
+    val activeIncomeCategories: StateFlow<List<Category>> = allCategories
         .map { list -> list.filter { it.active && (it.type == null || it.type == "income") } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val allTemplates: StateFlow<List<RecurringTransactionTemplate>> = repository.getAllTemplates()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
 
     // All counterparties (store/vendor/payer), read from their own small table — cheap to query and
     // the source for the counterparty picker's suggestions and dedupe hints.
     val counterparties: StateFlow<List<Counterparty>> = repository.getAllCounterparties()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        .stateInWhileSubscribed(viewModelScope, emptyList())
+
+    private val counterpartyNamesById: StateFlow<Map<Int, String>> = counterparties
+        .map { list -> list.associate { it.id to it.name } }
+        .stateInWhileSubscribed(viewModelScope, emptyMap())
 
     // User-selected currency symbol (display only — transactions are single-currency). Persisted in
     // the app_settings key/value table so it survives restarts and is independent of the language.
     val currencySymbol: StateFlow<String> = repository.observeSetting(KEY_CURRENCY_SYMBOL)
         .map { it ?: DEFAULT_CURRENCY_SYMBOL }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), DEFAULT_CURRENCY_SYMBOL)
+        .stateInWhileSubscribed(viewModelScope, DEFAULT_CURRENCY_SYMBOL)
 
     fun setCurrencySymbol(symbol: String) {
         viewModelScope.launch { repository.putSetting(KEY_CURRENCY_SYMBOL, symbol) }
@@ -121,7 +123,7 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         period.dateRange
     ) { transactions, templates, range ->
         mergeItems(transactions.inRange(range), templates, range)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+    }.stateInWhileSubscribed(viewModelScope, emptyList())
 
     // --- Per-tab filter & sort (independent Expenses vs Income), layered on top of the date range.
     // Held here so state survives tab switches; the pure logic lives in TransactionItemFiltering.kt.
@@ -142,16 +144,10 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
         filter: StateFlow<ListFilterState>,
         sort: StateFlow<SortState>
     ): StateFlow<List<ExpenseItem>> = combine(
-        expenseItems, filter, sort, counterparties, categoryNamesById
-    ) { items, f, s, cps, catNames ->
-        applyFilterAndSort(
-            items.filter { it.isExpense == isExpense },
-            f,
-            s,
-            cps.associate { it.id to it.name },
-            catNames
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(SUBSCRIBE_TIMEOUT_MS), emptyList())
+        expenseItems, filter, sort, counterpartyNamesById, categoryNamesById
+    ) { items, f, s, cpNames, catNames ->
+        applyFilterAndSort(items.filter { it.isExpense == isExpense }, f, s, cpNames, catNames)
+    }.stateInWhileSubscribed(viewModelScope, emptyList())
 
     val expensesTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(true, _expensesFilter, _expensesSort)
     val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
@@ -294,7 +290,6 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     }
 
     companion object {
-        private const val SUBSCRIBE_TIMEOUT_MS = 5000L
         const val KEY_CURRENCY_SYMBOL = "currency_symbol"
         const val DEFAULT_CURRENCY_SYMBOL = "€"
 
