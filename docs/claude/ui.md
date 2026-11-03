@@ -51,8 +51,9 @@ in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
   range and calls `mergeItems`. Range filtering must stay **inside** that combine: a separately
   filtered upstream flow lags a period change by one emission, so the new period's occurrences get
   projected against the old period's payments, and recurring rows flash for a frame.
-- `expensesTabItems` / `incomeTabItems` apply per-tab filter and sort state
-  (`TransactionItemFiltering.kt`) **after** the merge.
+- Per tab, filter and sort (`TransactionItemFiltering.kt`) apply **after** the merge, then
+  `sectionsOf` (`TabSections.kt`) splits the result into recurring / unpaid / paid with all totals.
+  Screens collect `expensesSections` / `incomeSections` and only render; no sums in composables.
 - `AnalyticsViewModel` derives its own range: MONTH mode uses the shared `PeriodSelection` range;
   YEAR mode is Analytics-only.
 - `ExpenseItem` is the UI model that unifies transactions and projected occurrences

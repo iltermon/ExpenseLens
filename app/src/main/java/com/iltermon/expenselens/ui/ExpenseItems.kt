@@ -18,7 +18,7 @@ data class ExpenseItem(
     val isPaid: Boolean,
     val isRecurring: Boolean,
     val transactionId: Int? = null,
-    val templateId: Int? = null,          // non-null only for recurring items
+    val templateId: Int? = null,          // non-null for recurring items and transactions recorded from a template
     val frequencyInterval: Int? = null,   // non-null only for recurring items
     val frequencyUnit: String? = null,    // non-null only for recurring items
     val accountId: Int? = null,
