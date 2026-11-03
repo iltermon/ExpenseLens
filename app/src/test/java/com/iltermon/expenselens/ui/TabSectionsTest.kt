@@ -48,5 +48,6 @@ class TabSectionsTest {
         assertTrue(s.all.isEmpty())
         assertEquals(0.0, s.total, 1e-9)
         assertEquals(0.0, s.outstandingTotal, 1e-9)
+        assertEquals(s, sectionsOf(emptyList()))         // initial StateFlow value matches an empty tab
     }
 }

@@ -22,7 +22,7 @@ data class TabSections(
     val paidTotal: Double = paid.sumOf { it.amount }
 
     /** Still to pay / receive: projected recurring plus recorded-but-unpaid. */
-    val outstandingTotal: Double = recurringTotal + unpaidTotal
+    val outstandingTotal: Double = (recurring + unpaid).sumOf { it.amount }
 
     /** Part of [total] that comes from recurring templates (projected or already recorded). */
     val fromTemplatesTotal: Double = all.filter { it.templateId != null }.sumOf { it.amount }
