@@ -6,7 +6,7 @@
 |---|---|
 | `ui/` | `ExpenseLensViewModel` (lists, tabs, CRUD), `PeriodSelection` (shared month/range), `DateRange`, `ExpenseItems.kt` (`ExpenseItem`, pure `mergeItems`/`inRange`) |
 | `ui/navigation/` | `AppNavigation.kt`: string `Routes` and the NavHost. This is the authoritative screen list. |
-| `ui/transactions/` | Expenses/Income list screens, Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
+| `ui/transactions/` | `TransactionListScreen` (Expenses/Income tab), Add/Edit screens, `OneTimeTransactionForm`, `RecurringForm`, `TransactionCoreFields`, `TransactionFormState`, filtering/sorting, unsaved-changes guard |
 | `ui/templates/` | Templates list + template edit screen |
 | `ui/settings/` | Settings plus accounts/categories/counterparties management |
 | `ui/analytics/` | `AnalyticsScreen`, `AnalyticsViewModel`, pure `AnalyticsCalculations.kt` (see [analytics.md](analytics.md)) |
@@ -53,7 +53,10 @@ in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
   projected against the old period's payments, and recurring rows flash for a frame.
 - Per tab, filter and sort (`TransactionItemFiltering.kt`) apply **after** the merge, then
   `sectionsOf` (`TabSections.kt`) splits the result into recurring / unpaid / paid with all totals.
-  Screens collect `expensesSections` / `incomeSections` and only render; no sums in composables.
+  `TransactionListScreen(type)` collects `sections(type)` / `filter(type)` / `sort(type)` and only
+  renders; no sums in composables. The ViewModel's `when (type)` lookups are the only place that
+  picks the expense or income side; they return stored flows (a fresh `asStateFlow()` per call would
+  restart `collectAsState` on every recomposition).
 - `AnalyticsViewModel` derives its own range: MONTH mode uses the shared `PeriodSelection` range;
   YEAR mode is Analytics-only.
 - `ExpenseItem` is the UI model that unifies transactions and projected occurrences
@@ -77,7 +80,8 @@ in a ViewModel. `CounterpartyChoice` is in `data/` for that reason.
 
 Screens shared by both kinds take a `TransactionType` (`EXPENSE` / `INCOME`, in
 `transactions/TransactionType.kt`) rather than an `isExpense` Boolean. The enum carries every
-per-type difference (e.g. `addTitle`); add a property there instead of branching in the screen.
+per-type difference (e.g. `addTitle`, the list labels); add a property there instead of branching
+in the screen.
 It is screen-level only: entities and the forms keep `isExpense` (`type.isExpense`).
 
 ## Display conventions
