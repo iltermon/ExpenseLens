@@ -14,6 +14,7 @@ import com.iltermon.expenselens.ui.transactions.ListFilterState
 import com.iltermon.expenselens.ui.transactions.SortKey
 import com.iltermon.expenselens.ui.transactions.SortState
 import com.iltermon.expenselens.ui.transactions.TabSections
+import com.iltermon.expenselens.ui.transactions.TransactionType
 import com.iltermon.expenselens.ui.transactions.sectionsOf
 import com.iltermon.expenselens.ui.transactions.applyFilterAndSort
 import kotlinx.coroutines.flow.*
@@ -131,13 +132,13 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     // Held here so state survives tab switches; the pure logic lives in TransactionItemFiltering.kt.
     // Applied AFTER mergeItems, so recurring projection/dedup is untouched. ---
     private val _expensesFilter = MutableStateFlow(ListFilterState())
-    val expensesFilter: StateFlow<ListFilterState> = _expensesFilter.asStateFlow()
+    private val expensesFilter: StateFlow<ListFilterState> = _expensesFilter.asStateFlow()
     private val _expensesSort = MutableStateFlow(SortState())
-    val expensesSort: StateFlow<SortState> = _expensesSort.asStateFlow()
+    private val expensesSort: StateFlow<SortState> = _expensesSort.asStateFlow()
     private val _incomeFilter = MutableStateFlow(ListFilterState())
-    val incomeFilter: StateFlow<ListFilterState> = _incomeFilter.asStateFlow()
+    private val incomeFilter: StateFlow<ListFilterState> = _incomeFilter.asStateFlow()
     private val _incomeSort = MutableStateFlow(SortState())
-    val incomeSort: StateFlow<SortState> = _incomeSort.asStateFlow()
+    private val incomeSort: StateFlow<SortState> = _incomeSort.asStateFlow()
 
     // Builds one tab's visible list: keeps only that tab's items (expense vs income) and runs them
     // through the shared filter + sort pipeline, re-emitting as a StateFlow that the screen collects.
@@ -155,20 +156,44 @@ class ExpenseLensViewModel(private val repository: ExpenseLensRepository) : View
     private val incomeTabItems: StateFlow<List<ExpenseItem>> = buildTabItems(false, _incomeFilter, _incomeSort)
 
     // Each tab's sections and totals, computed once per change (see TabSections.kt).
-    val expensesSections: StateFlow<TabSections> = expensesTabItems.map(::sectionsOf)
+    private val expensesSections: StateFlow<TabSections> = expensesTabItems.map(::sectionsOf)
         .stateInWhileSubscribed(viewModelScope, TabSections())
-    val incomeSections: StateFlow<TabSections> = incomeTabItems.map(::sectionsOf)
+    private val incomeSections: StateFlow<TabSections> = incomeTabItems.map(::sectionsOf)
         .stateInWhileSubscribed(viewModelScope, TabSections())
 
-    fun updateExpensesFilter(transform: (ListFilterState) -> ListFilterState) { _expensesFilter.update(transform) }
-    fun clearExpensesFilter() { _expensesFilter.value = ListFilterState()
+    // The list screen asks for its tab's state by type; this is the only place that picks a side.
+    // Each returns a stored flow, never a new one, so collectAsState doesn't restart per recomposition.
+    private fun filterFlow(type: TransactionType) = when (type) {
+        TransactionType.EXPENSE -> _expensesFilter
+        TransactionType.INCOME -> _incomeFilter
     }
-    fun setExpensesSort(key: SortKey) { _expensesSort.update { it.tapped(key) } }
+    private fun sortFlow(type: TransactionType) = when (type) {
+        TransactionType.EXPENSE -> _expensesSort
+        TransactionType.INCOME -> _incomeSort
+    }
 
-    fun updateIncomeFilter(transform: (ListFilterState) -> ListFilterState) { _incomeFilter.update(transform) }
-    fun clearIncomeFilter() { _incomeFilter.value = ListFilterState()
+    fun sections(type: TransactionType): StateFlow<TabSections> = when (type) {
+        TransactionType.EXPENSE -> expensesSections
+        TransactionType.INCOME -> incomeSections
     }
-    fun setIncomeSort(key: SortKey) { _incomeSort.update { it.tapped(key) } }
+    fun filter(type: TransactionType): StateFlow<ListFilterState> = when (type) {
+        TransactionType.EXPENSE -> expensesFilter
+        TransactionType.INCOME -> incomeFilter
+    }
+    fun sort(type: TransactionType): StateFlow<SortState> = when (type) {
+        TransactionType.EXPENSE -> expensesSort
+        TransactionType.INCOME -> incomeSort
+    }
+    fun categories(type: TransactionType): StateFlow<List<Category>> = when (type) {
+        TransactionType.EXPENSE -> expenseCategories
+        TransactionType.INCOME -> incomeCategories
+    }
+
+    fun updateFilter(type: TransactionType, transform: (ListFilterState) -> ListFilterState) {
+        filterFlow(type).update(transform)
+    }
+    fun clearFilter(type: TransactionType) { filterFlow(type).value = ListFilterState() }
+    fun setSort(type: TransactionType, key: SortKey) { sortFlow(type).update { it.tapped(key) } }
 
     fun goToPreviousMonth() = period.previousMonth()
 

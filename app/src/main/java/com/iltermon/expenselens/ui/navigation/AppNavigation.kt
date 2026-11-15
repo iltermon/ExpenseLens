@@ -54,8 +54,7 @@ import com.iltermon.expenselens.ui.templates.TemplatesScreen
 import com.iltermon.expenselens.ui.transactions.AddTransactionScreen
 import com.iltermon.expenselens.ui.transactions.TransactionType
 import com.iltermon.expenselens.ui.transactions.EditTransactionScreen
-import com.iltermon.expenselens.ui.transactions.ExpensesScreen
-import com.iltermon.expenselens.ui.transactions.IncomeScreen
+import com.iltermon.expenselens.ui.transactions.TransactionListScreen
 import com.iltermon.expenselens.ui.analytics.AnalyticsViewModel
 import com.iltermon.expenselens.ui.dev.ImportViewModel
 
@@ -118,9 +117,10 @@ fun AppNavigation(
             // Tab destinations are wrapped in TabContent so their content clears the floating nav bar.
             composable(Routes.EXPENSES) {
                 TabContent {
-                    ExpensesScreen(
+                    TransactionListScreen(
                         viewModel = viewModel,
-                        onAddTransaction = { navController.navigate(Routes.ADD_EXPENSE) },
+                        type = TransactionType.EXPENSE,
+                        onAdd = { navController.navigate(Routes.ADD_EXPENSE) },
                         onEditTransaction = { id -> navController.navigate("${Routes.EDIT_TRANSACTION}/$id") },
                         onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
                     )
@@ -135,9 +135,10 @@ fun AppNavigation(
             }
             composable(Routes.INCOME) {
                 TabContent {
-                    IncomeScreen(
+                    TransactionListScreen(
                         viewModel = viewModel,
-                        onAddIncome = { navController.navigate(Routes.ADD_INCOME) },
+                        type = TransactionType.INCOME,
+                        onAdd = { navController.navigate(Routes.ADD_INCOME) },
                         onEditTransaction = { id -> navController.navigate("${Routes.EDIT_TRANSACTION}/$id") },
                         onEditTemplate = { id -> navController.navigate("${Routes.EDIT_TEMPLATE}/$id") }
                     )

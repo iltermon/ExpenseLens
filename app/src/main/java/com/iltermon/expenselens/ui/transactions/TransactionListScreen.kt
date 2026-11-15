@@ -21,26 +21,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.iltermon.expenselens.R
+import com.iltermon.expenselens.ui.ExpenseLensViewModel
 import com.iltermon.expenselens.ui.components.ExpenseItemRow
 import com.iltermon.expenselens.ui.components.FilterBottomSheet
 import com.iltermon.expenselens.ui.components.NoFilterResults
 import com.iltermon.expenselens.ui.components.TabScreenShell
 import com.iltermon.expenselens.ui.components.SectionHeader
 
+/** The Expenses or Income tab: summary bar, search/filter/sort, and the recurring / unpaid / paid sections. */
 @Composable
-fun ExpensesScreen(
-    viewModel: com.iltermon.expenselens.ui.ExpenseLensViewModel,
-    onAddTransaction: () -> Unit,
+fun TransactionListScreen(
+    viewModel: ExpenseLensViewModel,
+    type: TransactionType,
+    onAdd: () -> Unit,
     onEditTransaction: (Int) -> Unit,
     onEditTemplate: (Int) -> Unit
 ) {
-    val sections by viewModel.expensesSections.collectAsState()
+    val sections by viewModel.sections(type).collectAsState()
     val items = sections.all
-    val filter by viewModel.expensesFilter.collectAsState()
-    val sort by viewModel.expensesSort.collectAsState()
+    val filter by viewModel.filter(type).collectAsState()
+    val sort by viewModel.sort(type).collectAsState()
     val templates by viewModel.allTemplates.collectAsState()
     val counterparties by viewModel.counterparties.collectAsState()
-    val categories by viewModel.expenseCategories.collectAsState()
+    val categories by viewModel.categories(type).collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val counterpartyNames = remember(counterparties) { counterparties.associate { it.id to it.name } }
     val categoryNames by viewModel.categoryNamesById.collectAsState()
@@ -52,25 +55,25 @@ fun ExpensesScreen(
     val paidItems = sections.paid
 
     TabScreenShell(
-        title = stringResource(R.string.nav_expenses),
+        title = stringResource(type.listTitle),
         viewModel = viewModel,
-        onAdd = onAddTransaction,
-        leftLabel = stringResource(R.string.expenses_this_month),
+        onAdd = onAdd,
+        leftLabel = stringResource(type.totalLabel),
         leftAmount = sections.total,
-        rightLabel = stringResource(R.string.expenses_remaining_payment),
+        rightLabel = stringResource(type.outstandingLabel),
         rightAmount = sections.outstandingTotal,
-        rightIsNegative = true,
+        rightIsNegative = type.isExpense,
         leftRecurring = sections.fromTemplatesTotal,
         rightRecurring = sections.recurringTotal,
-        onSearchOpen = { viewModel.clearExpensesFilter(); searchActive = true },
+        onSearchOpen = { viewModel.clearFilter(type); searchActive = true },
         searchActive = searchActive,
         searchQuery = filter.searchQuery,
-        onSearchQueryChange = { q -> viewModel.updateExpensesFilter { it.copy(searchQuery = q) } },
-        onSearchClose = { viewModel.clearExpensesFilter(); searchActive = false },
+        onSearchQueryChange = { q -> viewModel.updateFilter(type) { it.copy(searchQuery = q) } },
+        onSearchClose = { viewModel.clearFilter(type); searchActive = false },
         onOpenFilters = { showSheet = true },
         filterBadgeCount = filter.advancedCount,
         sort = sort,
-        onSelectSort = viewModel::setExpensesSort
+        onSelectSort = { key -> viewModel.setSort(type, key) }
     ) {
         LazyColumn(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -81,9 +84,7 @@ fun ExpensesScreen(
                     // Filters only exist inside search mode, so an active filter here means a
                     // search matched nothing; otherwise the period is genuinely empty.
                     if (filter.isActive) {
-                        NoFilterResults(
-                            onClearFilters = viewModel::clearExpensesFilter
-                        )
+                        NoFilterResults(onClearFilters = { viewModel.clearFilter(type) })
                     } else {
                         Box(
                             modifier = Modifier
@@ -91,7 +92,7 @@ fun ExpensesScreen(
                                 .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.no_expenses_for_period))
+                            Text(stringResource(type.emptyText))
                         }
                     }
                 }
@@ -131,7 +132,7 @@ fun ExpensesScreen(
                         item {
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
-                                title = stringResource(R.string.section_to_be_paid),
+                                title = stringResource(type.unpaidSection),
                                 total = sections.unpaidTotal)
                         }
                         items(unpaidItems) { item ->
@@ -150,7 +151,7 @@ fun ExpensesScreen(
                         item {
                             Spacer(Modifier.height(8.dp))
                             SectionHeader(
-                                title = stringResource(R.string.section_paid),
+                                title = stringResource(type.paidSection),
                                 total = sections.paidTotal)
                         }
                         items(paidItems) { item ->
@@ -176,8 +177,8 @@ fun ExpensesScreen(
             categories = categories,
             accounts = accounts,
             counterparties = counterparties,
-            onUpdateFilter = viewModel::updateExpensesFilter,
-            onClearFilter = viewModel::clearExpensesFilter,
+            onUpdateFilter = { transform -> viewModel.updateFilter(type, transform) },
+            onClearFilter = { viewModel.clearFilter(type) },
             onDismiss = { showSheet = false }
         )
     }
