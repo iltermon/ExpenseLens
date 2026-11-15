@@ -10,10 +10,15 @@ import java.time.temporal.ChronoUnit
  * Occurrences are anchored at the template's [RecurringTransactionTemplate.startDate] and
  * step by [RecurringTransactionTemplate.frequencyInterval] × [RecurringTransactionTemplate.frequencyUnit].
  * The template's own [RecurringTransactionTemplate.endDate] (if set) caps the series.
+ *
+ * When the end date falls between two billing days, the end date itself is the final payment
+ * (#49): monthly on the 15th ending 12 Feb also pays on 12 Feb. Pass
+ * [includeEndDatePayment] = false to get only the regular cadence.
  */
 fun RecurringTransactionTemplate.occurrencesInRange(
     rangeStart: LocalDate,
-    rangeEnd: LocalDate
+    rangeEnd: LocalDate,
+    includeEndDatePayment: Boolean = true
 ): List<LocalDate> {
     val anchor = LocalDate.parse(startDate)
     val seriesEnd = endDate?.let { LocalDate.parse(it) }
@@ -39,6 +44,13 @@ fun RecurringTransactionTemplate.occurrencesInRange(
         if (date >= rangeStart && date >= anchor) result.add(date)
         k++
     }
+    // The last regular occurrence <= seriesEnd is in result whenever it is in range, so a
+    // differing last element means the end date is not a billing day.
+    if (includeEndDatePayment && seriesEnd != null && seriesEnd <= rangeEnd &&
+        seriesEnd >= rangeStart && result.lastOrNull() != seriesEnd
+    ) {
+        result.add(seriesEnd)
+    }
     return result
 }
 
@@ -48,7 +60,8 @@ enum class RecurrenceRangeError { END_BEFORE_START, NEVER_REPEATS }
 /**
  * Validates a finite series' date range against its frequency. The end date may not precede the
  * start date, and the range must reach the second occurrence, otherwise the "series" is a single
- * payment (e.g. yearly with a one-month range). Returns null when the range is fine.
+ * payment (e.g. yearly with a one-month range). Only the regular cadence counts here: the extra
+ * end-date payment doesn't make a range repeat. Returns null when the range is fine.
  */
 fun recurrenceRangeError(
     startDate: LocalDate,
@@ -66,7 +79,7 @@ fun recurrenceRangeError(
         frequencyInterval = frequencyInterval,
         frequencyUnit = frequencyUnit
     )
-    return if (probe.occurrencesInRange(startDate, endDate).size < 2) RecurrenceRangeError.NEVER_REPEATS else null
+    return if (probe.occurrencesInRange(startDate, endDate, includeEndDatePayment = false).size < 2) RecurrenceRangeError.NEVER_REPEATS else null
 }
 
 private fun RecurringTransactionTemplate.occurrenceAt(anchor: LocalDate, steps: Long): LocalDate =

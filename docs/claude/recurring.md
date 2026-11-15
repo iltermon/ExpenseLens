@@ -14,14 +14,23 @@ aren't linked to any template.
 `RecurringTransactionTemplate.occurrencesInRange(start, end)` (`data/Recurrence.kt`) expands a
 template into due dates. Each date is computed from the fixed anchor (`startDate`), so a monthly
 template starting Jan 31 gives Feb 28/29 and then Mar 31, with no drift. `endDate` caps the series.
+When `endDate` falls between two billing days, the end date itself is the **final payment** (full
+amount, #49): monthly on the 15th ending Feb 12 pays Jan 15 and then Feb 12. This applies to
+projections, auto-pay and analytics alike, since they all go through `occurrencesInRange`. A
+consequence: setting an end date to stop a series right after a payment adds one more payment on
+that end date, so to stop cleanly, set the end date to the last paid billing day.
 
 `recurrenceRangeError` (same file) validates a finite series in `RecurringForm`: the end date must
 not precede the start date, and the range must reach the **second** occurrence. Otherwise the
-"series" is a single payment, e.g. yearly with a one-month range. The error is shown under the
-end date and blocks saving.
+"series" is a single payment, e.g. yearly with a one-month range. Only the regular
+cadence counts (`includeEndDatePayment = false`): the end-date payment doesn't make a range repeat.
+The error is shown under the end date and blocks saving.
 
-The app is **day-accurate by design**. Per-month totals can differ slightly from the user's old
-spreadsheet, which was month-granular. That is expected, not a bug.
+Until #49 (2026-11-15) the series simply stopped at the last billing day on or before `endDate`;
+the user reversed that decision so a final payment lands on the end date.
+
+The row label counts remaining occurrences including the row's own, so a count of 1 shows
+"Last payment" instead of "1 left".
 
 ## Projection and dedup (`mergeItems` in `ui/ExpenseItems.kt`)
 

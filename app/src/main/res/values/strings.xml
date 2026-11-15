@@ -122,6 +122,7 @@
     <string name="recurring_frequency_prefix">↻ %1$s</string>
     <!-- Remaining occurrences until a finite recurring series ends, shown next to the frequency -->
     <string name="recurring_remaining">%1$d left</string>
+    <string name="recurring_last_payment">Last payment</string>
 
     <!-- Expenses tab -->
     <string name="expenses_this_month">Expenses</string>

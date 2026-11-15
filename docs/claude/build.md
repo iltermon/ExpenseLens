@@ -1,17 +1,35 @@
 # Build & test
 
-There is no system JDK on PATH. Every shell that runs Gradle needs:
+## Commands
+
+The global `builder` subagent reads this section and runs these commands as written. Keep the
+Setup / Build / Test headings, and run every command from the repo root.
+
+### Setup
+
+There is no system JDK on PATH, and `JAVA_HOME` isn't stored in `gradle.properties` or
+`local.properties`. Every shell that runs Gradle needs:
 
 ```bash
 export JAVA_HOME=~/.local/share/JetBrains/Toolbox/apps/rider/jbr   # the webstorm Toolbox app has the same JBR 21
 ```
 
-This isn't stored in `gradle.properties` or `local.properties`.
+### Build
 
 ```bash
 ./gradlew assembleDebug                 # debug APK
-./gradlew :app:compileDebugKotlin       # fastest compile check
+```
+
+### Test
+
+```bash
 ./gradlew test                          # all JVM unit tests (:app + :sankey)
+```
+
+## Other commands
+
+```bash
+./gradlew :app:compileDebugKotlin       # fastest compile check
 ./gradlew test --tests "com.iltermon.expenselens.ui.SankeyMapperTest"
 ./gradlew connectedAndroidTest          # needs a device; ask before any adb/device action
 ./gradlew lint

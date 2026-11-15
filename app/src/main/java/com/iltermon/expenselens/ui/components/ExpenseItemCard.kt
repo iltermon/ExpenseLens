@@ -90,10 +90,14 @@ fun ExpenseItemCard(
                         R.string.recurring_frequency_prefix,
                         frequencyLabel(item.frequencyInterval ?: 1, item.frequencyUnit)
                     )
+                    // The count includes this row, so 1 means this is the final payment.
+                    val remaining = when (remainingOccurrences) {
+                        null -> null
+                        1 -> stringResource(R.string.recurring_last_payment)
+                        else -> stringResource(R.string.recurring_remaining, remainingOccurrences)
+                    }
                     Text(
-                        if (remainingOccurrences != null)
-                            "$frequency · ${stringResource(R.string.recurring_remaining, remainingOccurrences)}"
-                        else frequency,
+                        if (remaining != null) "$frequency · $remaining" else frequency,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )
