@@ -122,6 +122,7 @@
     <string name="recurring_frequency_prefix">↻ %1$s</string>
     <!-- Sonlu bir tekrar serisi bitene kadar kalan tekrar sayısı, sıklığın yanında gösterilir -->
     <string name="recurring_remaining">%1$d kaldı</string>
+    <string name="recurring_last_payment">Son ödeme</string>
 
     <!-- Expenses tab -->
     <string name="expenses_this_month">Gider</string>

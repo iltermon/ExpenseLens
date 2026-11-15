@@ -57,10 +57,43 @@ class OccurrencesInRangeTest {
 
     @Test fun `end date caps the series and open-ended keeps going`() {
         assertEquals(
-            dates("2026-01-01", "2026-02-01"),
-            template("2026-01-01", end = "2026-02-15").occurrencesInRange(d("2026-01-01"), d("2026-12-31"))
+            dates("2026-01-01", "2026-02-01", "2026-03-01"),
+            template("2026-01-01", end = "2026-03-01").occurrencesInRange(d("2026-01-01"), d("2026-12-31"))
         )
         assertEquals(12, template("2026-01-01").occurrencesInRange(d("2026-01-01"), d("2026-12-31")).size)
+    }
+
+    @Test fun `end date before the next billing day is the final payment`() {
+        // Issue #49: monthly on the 15th, ending 12 Feb, also pays on 12 Feb.
+        assertEquals(
+            dates("2026-10-15", "2026-11-15", "2026-12-15", "2027-01-15", "2027-02-12"),
+            template("2026-10-15", end = "2027-02-12").occurrencesInRange(d("2026-10-01"), d("2027-12-31"))
+        )
+    }
+
+    @Test fun `end date on a billing day is not counted twice`() {
+        assertEquals(
+            dates("2026-01-15", "2026-02-15"),
+            template("2026-01-15", end = "2026-02-15").occurrencesInRange(d("2026-01-01"), d("2026-12-31"))
+        )
+    }
+
+    @Test fun `end date payment respects the range`() {
+        val t = template("2026-10-15", end = "2027-02-12")
+        // Range holds only the end date, after the last regular occurrence.
+        assertEquals(dates("2027-02-12"), t.occurrencesInRange(d("2027-02-01"), d("2027-02-28")))
+        // Range stops before the end date.
+        assertEquals(dates("2027-01-15"), t.occurrencesInRange(d("2027-01-01"), d("2027-02-11")))
+        // Range starts after the end date.
+        assertTrue(t.occurrencesInRange(d("2027-02-13"), d("2027-03-31")).isEmpty())
+    }
+
+    @Test fun `cadence only leaves out the end date payment`() {
+        assertEquals(
+            dates("2026-01-01", "2026-02-01"),
+            template("2026-01-01", end = "2026-02-15")
+                .occurrencesInRange(d("2026-01-01"), d("2026-12-31"), includeEndDatePayment = false)
+        )
     }
 
     @Test fun `range edges are inclusive`() {
